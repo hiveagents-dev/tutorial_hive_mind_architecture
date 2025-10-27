@@ -1,0 +1,17 @@
+# Archivos a ignorar en Docker
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.git/
+.gitignore
+.DS_Store
+logs/
+output/
+*.log
+docs/
+README.md
+docker-manager.sh
+env.example

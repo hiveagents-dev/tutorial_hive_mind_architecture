@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # Servicio principal de HiveMind API REST
+  hivemind-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hivemind-api
+    ports:
+      - "8002:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=gemini-flash-lite-latest
+      - TEMPERATURE=0.7
+      - MAX_TOKENS=4000
+      - DEFAULT_METHODOLOGY=scrum
+      - DEFAULT_CONSENSUS_STRATEGY=weighted_voting
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=false
+      - API_LOG_LEVEL=info
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+    command: ["python", "run_api.py", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - hivemind-network
+
+  # Servicio CLI para análisis directo
+  hivemind-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hivemind-cli
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=gemini-flash-lite-latest
+      - TEMPERATURE=0.7
+      - MAX_TOKENS=4000
+      - DEFAULT_METHODOLOGY=scrum
+      - DEFAULT_CONSENSUS_STRATEGY=weighted_voting
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+      - ./examples:/app/examples
+    command: ["python", "src/main.py", "--help"]
+    networks:
+      - hivemind-network
+    profiles:
+      - cli
+
+  # Servicio de desarrollo con hot-reload
+  hivemind-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hivemind-dev
+    ports:
+      - "8001:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=gemini-flash-lite-latest
+      - TEMPERATURE=0.7
+      - MAX_TOKENS=4000
+      - DEFAULT_METHODOLOGY=scrum
+      - DEFAULT_CONSENSUS_STRATEGY=weighted_voting
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=true
+      - API_LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - ./output:/app/output
+    command: ["python", "run_api.py", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+    networks:
+      - hivemind-network
+    profiles:
+      - dev
+
+  # Servicio de pruebas automatizadas
+  hivemind-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hivemind-test
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=gemini-flash-lite-latest
+      - TEMPERATURE=0.7
+      - MAX_TOKENS=4000
+      - DEFAULT_METHODOLOGY=scrum
+      - DEFAULT_CONSENSUS_STRATEGY=weighted_voting
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - ./output:/app/output
+    command: ["python", "test_api.py", "--url", "http://hivemind-api:8000"]
+    depends_on:
+      - hivemind-api
+    networks:
+      - hivemind-network
+    profiles:
+      - test
+
+# Red personalizada para comunicación entre servicios
+networks:
+  hivemind-network:
+    driver: bridge
+    name: hivemind-network
+
+# Volúmenes para persistencia de datos
+volumes:
+  logs:
+    driver: local
+  output:
+    driver: local

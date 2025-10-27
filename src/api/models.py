@@ -61,7 +61,7 @@ class AgentResponseModel(BaseModel):
     """Modelo para respuesta de un agente individual"""
     agent_name: str = Field(..., description="Nombre del agente")
     confidence: float = Field(..., description="Nivel de confianza (0.0-1.0)")
-    timestamp: datetime = Field(..., description="Timestamp de la respuesta")
+    timestamp: str = Field(..., description="Timestamp de la respuesta")
     methodology: Optional[str] = Field(None, description="Metodología utilizada")
     content: str = Field(..., description="Contenido de la respuesta")
     content_length: int = Field(..., description="Longitud del contenido")
@@ -90,7 +90,7 @@ class HiveMindResponseModel(BaseModel):
     
     # Metadatos
     metadata: Dict[str, Any] = Field(..., description="Metadatos adicionales")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp de la respuesta")
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Timestamp de la respuesta")
 
 
 class ErrorResponseModel(BaseModel):
@@ -98,7 +98,7 @@ class ErrorResponseModel(BaseModel):
     error: str = Field(..., description="Tipo de error")
     message: str = Field(..., description="Mensaje de error")
     details: Optional[Dict[str, Any]] = Field(None, description="Detalles adicionales del error")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp del error")
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Timestamp del error")
 
 
 class HealthCheckModel(BaseModel):
