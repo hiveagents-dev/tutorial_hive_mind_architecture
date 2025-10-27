@@ -223,6 +223,66 @@ consensus_level = result.consensus_result.consensus_level
 execution_time = result.execution_time
 ```
 
+### REST API Interface
+
+The system includes a complete REST API built with FastAPI, providing programmatic access to all HiveMind capabilities.
+
+#### Starting the API Server
+
+```bash
+# Start the API server
+python run_api.py
+
+# Start with custom configuration
+python run_api.py --host 0.0.0.0 --port 8080 --reload
+
+# Start in production mode
+python run_api.py --host 0.0.0.0 --port 8000
+```
+
+#### API Endpoints
+
+- **`GET /`** - Root endpoint with basic information
+- **`GET /api/v1/health`** - Health check endpoint
+- **`GET /api/v1/info`** - System information and capabilities
+- **`GET /api/v1/methodologies`** - Available agile methodologies
+- **`GET /api/v1/consensus-strategies`** - Available consensus strategies
+- **`POST /api/v1/analyze`** - Main endpoint for business need analysis
+- **`POST /api/v1/example`** - Run example analysis
+
+#### Interactive Documentation
+
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+#### Example API Usage
+
+```python
+import requests
+
+# Analyze business need via API
+response = requests.post("http://localhost:8000/api/v1/analyze", json={
+    "business_need": "We need to create a mobile app for medical appointment booking",
+    "methodology": "scrum",
+    "consensus_strategy": "weighted_voting",
+    "verbose": True
+})
+
+result = response.json()
+print(f"Analysis completed in {result['execution_time']:.2f}s")
+print(f"Consensus level: {result['consensus_result']['consensus_level']:.2f}")
+```
+
+#### Testing the API
+
+```bash
+# Run comprehensive API tests
+python test_api.py
+
+# Test with custom URL
+python test_api.py --url http://localhost:8080
+```
+
 ---
 
 ## Output Structure
@@ -302,6 +362,8 @@ Standardized message format for inter-agent communication:
 
 - **Python 3.11+**: Modern Python with type hints
 - **Google Gemini API**: Advanced language model via `google-genai>=1.46.0`
+- **FastAPI**: Modern, fast web framework for building APIs
+- **Uvicorn**: ASGI server for FastAPI
 - **Pydantic**: Data validation and settings management
 - **Rich**: Beautiful terminal output
 - **A2A Protocol**: Agent communication standard
