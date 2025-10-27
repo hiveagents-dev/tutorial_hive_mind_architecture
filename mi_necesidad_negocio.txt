@@ -1,0 +1,32 @@
+Necesitamos desarrollar una plataforma de aprendizaje online para cursos de programación.
+
+CONTEXTO DE NEGOCIO:
+- Mercado objetivo: Estudiantes y profesionales que quieren aprender programación
+- Geografía: Inicialmente México y Colombia, luego expansión a toda Latinoamérica
+- Modelo de negocio: Suscripción mensual con cursos ilimitados
+- Diferenciación: Enfoque práctico con proyectos reales y mentoría 1:1
+
+REQUERIMIENTOS CLAVE:
+- Sistema de cursos con videos, ejercicios y proyectos
+- Editor de código integrado en el navegador
+- Sistema de evaluación automática de código
+- Chat en vivo con mentores
+- Gamificación con puntos y badges
+- App móvil para aprender en cualquier lugar
+- Integración con GitHub para proyectos
+- Certificados digitales al completar cursos
+
+OBJETIVOS DE NEGOCIO:
+- Lanzar MVP en 6 meses
+- Captar 5,000 estudiantes en primer año
+- Tasa de retención del 70% después de 3 meses
+- Ingresos recurrentes de $200K USD anuales
+- Net Promoter Score > 60
+
+RESTRICCIONES:
+- Presupuesto: $150K USD para desarrollo inicial
+- Equipo: 3 desarrolladores full-stack, 1 diseñador UX, 1 PM
+- Debe funcionar en conexiones lentas (importante para LATAM)
+- Tiempo de carga < 3 segundos
+- Disponibilidad 99.5%
+- Debe escalar a 50,000 usuarios simultáneos

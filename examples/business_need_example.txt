@@ -1,0 +1,40 @@
+Necesitamos desarrollar una plataforma de gestión de proyectos ágil para equipos remotos.
+
+CONTEXTO DE NEGOCIO:
+- Mercado objetivo: Equipos de desarrollo de software de 5-50 personas
+- Geografía: Inicialmente América Latina, luego expansión global
+- Modelo de negocio: SaaS con suscripción mensual por usuario
+- Diferenciación: IA para predicción de riesgos y sugerencias de optimización
+
+REQUERIMIENTOS CLAVE:
+- Gestión de sprints y backlog con drag & drop
+- Tableros Kanban personalizables por equipo
+- Integración con GitHub, GitLab, Bitbucket
+- Time tracking automático desde commits
+- Reportes y analytics avanzados con IA
+- Video conferencia integrada para dailies
+- Modo offline con sincronización automática
+- App móvil (iOS y Android) con notificaciones push
+- Integración con Slack, Teams, Discord
+
+OBJETIVOS DE NEGOCIO:
+- Lanzar MVP en 4 meses
+- Captar 1,000 usuarios beta en primer mes
+- Tasa de conversión de 20% free-to-paid
+- ARR de $500K en primer año
+- Net Promoter Score > 50
+
+RESTRICCIONES:
+- Presupuesto: $300K para desarrollo inicial
+- Equipo: 4 desarrolladores full-stack, 1 diseñador UX, 1 PM
+- Debe cumplir con GDPR, CCPA, SOC 2
+- Tiempo de respuesta < 200ms para operaciones críticas
+- Disponibilidad 99.9% (SLA)
+- Debe escalar a 10,000 usuarios simultáneos
+
+CONSIDERACIONES TÉCNICAS:
+- Preferencia por arquitectura cloud-native
+- Base de datos debe soportar búsquedas en tiempo real
+- Sistema de permisos granular (por proyecto/equipo)
+- API pública para integraciones de terceros
+- Webhooks para eventos importantes

@@ -1,0 +1,9 @@
+# Core dependencies - Octubre 2025
+google-genai>=1.46.0  # Nuevo SDK recomendado (en lugar de google-generativeai)
+pydantic>=2.12.2
+python-dotenv>=1.1.1
+rich>=13.9.4
+
+# Additional utilities
+typing-extensions>=4.15.0
+requests>=2.32.5
