@@ -172,12 +172,13 @@ async def analyze_business_need(
         response = HiveMindResponseModel(
             success=True,
             execution_time=result.execution_time,
-            methodology=request.methodology.value,
+            methodology=request.methodology,
             consensus_result={
                 "consensus_level": result.consensus_result.consensus_level,
                 "achieved": result.consensus_result.achieved,
-                "strategy_used": result.consensus_result.strategy_used,
-                "details": result.consensus_result.details
+                "strategy_used": result.consensus_result.strategy_used.value,
+                "justification": result.consensus_result.justification,
+                "metadata": result.consensus_result.metadata
             },
             worker_responses=[
                 {

@@ -72,7 +72,8 @@ class ConsensusResultModel(BaseModel):
     consensus_level: float = Field(..., description="Nivel de consenso alcanzado")
     achieved: bool = Field(..., description="Si se alcanzó consenso")
     strategy_used: str = Field(..., description="Estrategia utilizada")
-    details: Optional[Dict[str, Any]] = Field(None, description="Detalles del consenso")
+    justification: str = Field(..., description="Justificación del consenso")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadatos del consenso")
 
 
 class HiveMindResponseModel(BaseModel):
