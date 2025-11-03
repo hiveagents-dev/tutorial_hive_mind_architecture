@@ -1,16 +1,15 @@
-version: '3.8'
-
 services:
   # Servicio principal de HiveMind API REST
   hivemind-api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: hivemind-api
+    env_file:
+      - backend/.env
     ports:
       - "8002:8000"
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GEMINI_MODEL=gemini-flash-lite-latest
       - TEMPERATURE=0.7
       - MAX_TOKENS=4000
@@ -20,10 +19,14 @@ services:
       - API_PORT=8000
       - API_RELOAD=false
       - API_LOG_LEVEL=info
+      - DATABASE_URL=postgresql://hivemind:hivemind_password@postgres:5432/hivemind
     volumes:
       - ./logs:/app/logs
       - ./output:/app/output
-    command: ["python", "run_api.py", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "backend/run_api.py", "--host", "0.0.0.0", "--port", "8000"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
@@ -38,10 +41,11 @@ services:
   hivemind-cli:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: hivemind-cli
+    env_file:
+      - backend/.env
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GEMINI_MODEL=gemini-flash-lite-latest
       - TEMPERATURE=0.7
       - MAX_TOKENS=4000
@@ -50,8 +54,8 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./output:/app/output
-      - ./examples:/app/examples
-    command: ["python", "src/main.py", "--help"]
+      - ./backend/examples:/app/backend/examples
+    command: ["python", "backend/cli.py", "--help"]
     networks:
       - hivemind-network
     profiles:
@@ -61,12 +65,13 @@ services:
   hivemind-dev:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: hivemind-dev
+    env_file:
+      - backend/.env
     ports:
       - "8001:8000"
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GEMINI_MODEL=gemini-flash-lite-latest
       - TEMPERATURE=0.7
       - MAX_TOKENS=4000
@@ -80,7 +85,7 @@ services:
       - .:/app
       - ./logs:/app/logs
       - ./output:/app/output
-    command: ["python", "run_api.py", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["python", "backend/run_api.py", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     restart: unless-stopped
     networks:
       - hivemind-network
@@ -91,10 +96,11 @@ services:
   hivemind-test:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: hivemind-test
+    env_file:
+      - backend/.env
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GEMINI_MODEL=gemini-flash-lite-latest
       - TEMPERATURE=0.7
       - MAX_TOKENS=4000
@@ -104,13 +110,56 @@ services:
       - .:/app
       - ./logs:/app/logs
       - ./output:/app/output
-    command: ["python", "test_api.py", "--url", "http://hivemind-api:8000"]
+    command: ["python", "backend/test_api.py", "--url", "http://hivemind-api:8000"]
     depends_on:
       - hivemind-api
     networks:
       - hivemind-network
     profiles:
       - test
+
+  # Servicio Frontend Web
+  hivemind-frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: hivemind-frontend
+    ports:
+      - "3002:80"
+    depends_on:
+      - hivemind-api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - hivemind-network
+
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: hivemind-postgres
+    environment:
+      POSTGRES_DB: hivemind
+      POSTGRES_USER: hivemind
+      POSTGRES_PASSWORD: hivemind_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # No exponer puerto al host, solo acceso interno desde otros contenedores
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivemind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hivemind-network
 
 # Red personalizada para comunicación entre servicios
 networks:
@@ -123,4 +172,6 @@ volumes:
   logs:
     driver: local
   output:
+    driver: local
+  postgres_data:
     driver: local

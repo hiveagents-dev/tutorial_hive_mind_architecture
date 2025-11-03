@@ -1,1048 +1,1140 @@
 # HiveMind Architecture Documentation
 
-## Overview
+## Documento de Arquitectura - Modelo 4+1 Vistas
 
-This document describes the architecture of the HiveMind system for transforming business needs into comprehensive technical requirements through a hierarchical consensus mechanism.
+Este documento describe la arquitectura del sistema HiveMind utilizando el **modelo de vistas arquitectónicas 4+1**, desarrollado por Philippe Kruchten. Este modelo proporciona múltiples vistas complementarias de una arquitectura de software, permitiendo a diferentes stakeholders (desarrolladores, arquitectos, gerentes de proyecto) entender el sistema desde diferentes perspectivas.
 
-## Table of Contents
+### Propósito del Documento
 
-1. [Architecture Overview](#architecture-overview)
-2. [Architectural Patterns](#architectural-patterns)
-3. [System Components](#system-components)
-4. [Agile Methodology Support](#agile-methodology-support)
-5. [Architecture Views (4+1)](#architecture-views-41)
-6. [Data Flow](#data-flow)
-7. [Consensus Mechanisms](#consensus-mechanisms)
-8. [Communication Protocol](#communication-protocol)
-9. [Design Decisions](#design-decisions)
+Este documento tiene como objetivo:
+- Proporcionar una descripción completa y académica de la arquitectura HiveMind
+- Servir como material de referencia para el aprendizaje de arquitecturas multi-agente AI
+- Documentar decisiones de diseño y patrones arquitectónicos aplicados
+- Facilitar la comprensión del sistema a diferentes niveles de abstracción
 
 ---
 
-## Architecture Overview
+## Tabla de Contenidos
 
-The HiveMind architecture is a **three-level hierarchical consensus system** that orchestrates multiple specialized AI agents to analyze software development needs from different perspectives and synthesize them into actionable technical requirements. The system supports multiple **Agile methodologies** (Scrum, SAFe, Kanban) and adapts its behavior, roles, and outputs accordingly.
+1. [Visión General del Sistema](#visión-general-del-sistema)
+2. [Vista Lógica](#1-vista-lógica-logical-view)
+3. [Vista de Proceso](#2-vista-de-proceso-process-view)
+4. [Vista Física](#3-vista-física-physical-view)
+5. [Vista de Desarrollo](#4-vista-de-desarrollo-development-view)
+6. [Vista de Casos de Uso (+1)](#5-vista-de-casos-de-uso-use-case-view)
+7. [Patrones Arquitectónicos](#patrones-arquitectónicos)
+8. [Componentes del Sistema](#componentes-del-sistema)
+9. [Mecanismos de Consenso](#mecanismos-de-consenso)
+10. [Protocolo de Comunicación A2A](#protocolo-de-comunicación-a2a)
+11. [Decisiones de Diseño](#decisiones-de-diseño)
+
+---
+
+## Visión General del Sistema
+
+HiveMind es un **sistema multi-agente de inteligencia artificial** diseñado para transformar necesidades de negocio en requisitos técnicos y funcionales completos, siguiendo las mejores prácticas de SDLC Ágil (Software Development Life Cycle). El sistema implementa una **arquitectura jerárquica de consenso a tres niveles**, donde múltiples agentes especializados colaboran para producir documentación lista para desarrollo.
+
+### Características Principales
+
+- **Arquitectura Multi-Agente Jerárquica**: Tres niveles de agentes (Workers, Coordinator, Supervisor)
+- **Flujo de Ejecución Jerárquico**: Ejecución secuencial siguiendo mejores prácticas de Product Management
+- **Soporte Multi-Metodología**: Adaptación automática a Scrum, SAFe y Kanban
+- **Protocolo A2A (Agent-to-Agent)**: Comunicación estandarizada entre agentes
+- **Mecanismos de Consenso**: Múltiples estrategias para alcanzar acuerdo entre agentes
+- **Integración con LLM**: Utilización de Google Gemini API para generación de contenido
+- **Persistencia de Datos**: Almacenamiento en PostgreSQL con trazabilidad completa
+- **Interfaces Múltiples**: CLI, REST API y Frontend Web (React)
+
+### Arquitectura Jerárquica de Tres Niveles
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     SUPERVISOR AGENT                         │
-│              (Level 3 - Final Decision)                      │
-│          Generates Technical Requirements Document           │
+│              (Nivel 3 - Decisión Final)                      │
+│          Genera Documento de Requisitos Técnicos             │
+│              Confianza: 0.95 (Autoridad Máxima)              │
 └────────────────────────┬────────────────────────────────────┘
                          │
-                         │ Synthesis
+                         │ Síntesis y Validación
                          │
 ┌────────────────────────▼────────────────────────────────────┐
 │                   COORDINATOR AGENT                          │
-│              (Level 2 - Integration)                         │
-│         Synthesizes & Resolves Conflicts                     │
+│              (Nivel 2 - Integración)                         │
+│         Sintetiza y Resuelve Conflictos                      │
+│         Aplica Mecanismo de Consenso                         │
 └────────────────────────┬────────────────────────────────────┘
                          │
          ┌───────────────┴───────────────┐
          │                               │
-    Aggregates                      Consensus
+    Agrega                      Consenso
          │                               │
 ┌────────▼─────────────────────────────────────────────────────┐
 │                    WORKER AGENTS                             │
-│                 (Level 1 - Specialists)                      │
+│                 (Nivel 1 - Especialistas)                    │
 │                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │   Product    │  │   Product    │  │    UX/UI     │      │
 │  │   Manager    │  │    Owner     │  │   Designer   │      │
+│  │              │  │              │  │              │      │
+│  │ Business     │  │ User Stories │  │ User         │      │
+│  │ Analysis     │  │ & Backlog    │  │ Experience   │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │    Scrum     │  │  Technical   │  │      QA      │      │
 │  │   Master     │  │     Lead     │  │  Specialist  │      │
+│  │              │  │              │  │              │      │
+│  │ Process &    │  │ Architecture │  │ Quality      │      │
+│  │ Risk Mgmt    │  │ & Tech Stack │  │ Strategy     │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Architectural Patterns
+## 1. Vista Lógica (Logical View)
 
-### 1. HiveMind Pattern
+La **Vista Lógica** describe la funcionalidad del sistema en términos de componentes de software y sus relaciones. Esta vista es relevante para desarrolladores y arquitectos de software.
 
-The **HiveMind pattern** is a multi-agent architecture where:
-- Multiple specialized agents work independently on the same problem
-- Agents have different perspectives and expertise
-- A coordination layer synthesizes their outputs
-- A supervision layer makes final decisions
+### 1.1 Descomposición Funcional
 
-**Key Characteristics:**
-- **Parallel Processing**: Worker agents analyze simultaneously
-- **Diversity of Thought**: Each agent brings unique perspective
-- **Hierarchical Consensus**: Multi-level decision making
-- **Transparent Communication**: All interactions logged via A2A protocol
-
-## Architectural Patterns
-
-### 1. HiveMind Pattern
-
-The **HiveMind pattern** is a multi-agent architecture where:
-- Multiple specialized agents work independently on the same problem
-- Agents have different perspectives and expertise
-- A coordination layer synthesizes their outputs
-- A supervision layer makes final decisions
-
-**Key Characteristics:**
-- **Parallel Processing**: Worker agents analyze simultaneously
-- **Diversity of Thought**: Each agent brings unique perspective
-- **Hierarchical Consensus**: Multi-level decision making
-- **Transparent Communication**: All interactions logged via A2A protocol
-
-### 2. HiveMind Workflow Pattern
-
-The HiveMind workflow follows a **three-phase hierarchical consensus pattern**:
-
-#### Phase 1: Hierarchical Specialized Analysis (Worker Agents)
-```
-┌─────────────────────────────────────────────────────────────┐
-│              PHASE 1: HIERARCHICAL WORKER ANALYSIS           │
-│                                                             │
-│  Input: Business Need + Methodology Context                 │
-│  │                                                         │
-│  📋 Step 1: Business Foundation                            │
-│  ├─> ProductManager ──> Business Analysis                  │
-│  │   (No dependencies - Starting phase)                   │
-│  │                                                         │
-│  📋 Step 2: Product Definition                             │
-│  ├─> ProductOwner ──> User Stories & Backlog               │
-│  │   (Depends on: Business Foundation)                     │
-│  │                                                         │
-│  📋 Step 3: User Experience                                │
-│  ├─> UXUI_Designer ──> User Experience Design             │
-│  │   (Depends on: Product Definition)                      │
-│  │                                                         │
-│  📋 Step 4: Technical Foundation                           │
-│  ├─> TechnicalLead ──> Architecture & Technology          │
-│  │   (Depends on: User Experience)                         │
-│  │                                                         │
-│  📋 Step 5: Process Optimization                           │
-│  ├─> ScrumMaster ──> Process & Risk Analysis               │
-│  │   (Depends on: Technical Foundation)                    │
-│  │                                                         │
-│  📋 Step 6: Quality Assurance                              │
-│  ├─> QA_Specialist ──> Quality & Testing Strategy          │
-│  │   (Depends on: Process Optimization)                   │
-│                                                             │
-│  Output: 6 Sequential Specialized Analyses                  │
-│  Quality Control: Hierarchical confidence + dependencies   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Quality Verification at Level 1:**
-- Each agent generates a confidence score (0.0-1.0)
-- **Hierarchical Dependencies**: Each phase validates its dependencies
-- **Context Preservation**: Each agent receives context from previous phases
-- **Methodology-specific validation rules** applied
-- **Sequential Quality Gates**: Each phase must pass before next phase starts
-- Communication bus logs all interactions for traceability
-
-#### Phase 2: Synthesis & Conflict Resolution (Coordinator)
-```
-┌─────────────────────────────────────────────────────────────┐
-│                PHASE 2: COORDINATOR SYNTHESIS               │
-│                                                             │
-│  Input: 6 Worker Responses + Original Business Need        │
-│  │                                                         │
-│  ├─> Collect all worker responses                          │
-│  ├─> Identify synergies and complementary insights         │
-│  ├─> Detect conflicts and inconsistencies                 │
-│  ├─> Resolve conflicts using methodology context           │
-│  ├─> Create integrated synthesis                           │
-│  └─> Apply consensus mechanism (Weighted Voting)          │
-│                                                             │
-│  Output: Integrated Proposal + Consensus Result            │
-│  Quality Control: Consensus level + Conflict resolution    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Quality Verification at Level 2:**
-- **Consensus Manager** applies weighted voting consensus
-- **Conflict Detection**: Identifies contradictory recommendations
-- **Synergy Analysis**: Finds complementary insights
-- **Completeness Check**: Ensures all perspectives are considered
-- **Methodology Alignment**: Validates against chosen methodology
-
-#### Phase 3: Final Decision & Requirements Generation (Supervisor)
-```
-┌─────────────────────────────────────────────────────────────┐
-│              PHASE 3: SUPERVISOR FINALIZATION               │
-│                                                             │
-│  Input: Coordinator Synthesis + Original Business Need     │
-│  │                                                         │
-│  ├─> Evaluate coordinator's integrated proposal            │
-│  ├─> Validate completeness and feasibility                 │
-│  ├─> Make final decisions on approach                      │
-│  ├─> Generate comprehensive technical requirements         │
-│  ├─> Apply methodology-specific formatting                 │
-│  └─> Provide executive summary and recommendations         │
-│                                                             │
-│  Output: Final Technical Requirements Document              │
-│  Quality Control: Executive validation + Methodology check │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Quality Verification at Level 3:**
-- **Executive Validation**: Senior-level decision making
-- **Feasibility Check**: Ensures technical and business viability
-- **Completeness Audit**: Validates all requirements are covered
-- **Methodology Compliance**: Ensures output follows chosen methodology
-- **Final Authority**: Supervisor has highest confidence (0.95)
-
-### 3. Context Preservation Pattern
-
-The HiveMind maintains **complete context preservation** throughout the workflow:
+El sistema HiveMind se estructura en las siguientes capas lógicas:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                CONTEXT PRESERVATION FLOW                    │
+│                    CAPA DE INTERFACES                        │
 │                                                             │
-│  Level 1: Each worker receives:                            │
-│  ├─> Original business need                                │
-│  ├─> Methodology context (roles, artifacts, ceremonies)   │
-│  └─> Agent-specific system prompt                          │
-│                                                             │
-│  Level 2: Coordinator receives:                           │
-│  ├─> Original business need                                │
-│  ├─> All 6 worker responses (with metadata)               │
-│  ├─> Methodology context                                   │
-│  └─> Consensus requirements                                │
-│                                                             │
-│  Level 3: Supervisor receives:                             │
-│  ├─> Original business need                                │
-│  ├─> Coordinator synthesis                                 │
-│  ├─> Consensus results                                     │
-│  ├─> Methodology context                                   │
-│  └─> All previous context preserved                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │   CLI       │  │  REST API   │  │  Frontend   │        │
+│  │   (Python)  │  │  (FastAPI)  │  │  (React)    │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
-```
-
-### 4. Quality Assurance Pattern
-
-The HiveMind implements **multi-level quality assurance**:
-
-#### Level 1 Quality Controls:
-- **Individual Confidence**: Each agent scores its own output
-- **Prompt Validation**: Methodology-specific prompts ensure relevance
-- **Completeness Check**: Agents validate their analysis is complete
-- **Communication Logging**: All interactions tracked via A2A protocol
-
-#### Level 2 Quality Controls:
-- **Consensus Validation**: Weighted voting ensures agreement
-- **Conflict Resolution**: Explicit handling of contradictory views
-- **Synthesis Completeness**: Coordinator ensures all perspectives integrated
-- **Methodology Alignment**: Validates against chosen methodology standards
-
-#### Level 3 Quality Controls:
-- **Executive Review**: Senior-level validation of all decisions
-- **Feasibility Check**: Ensures technical and business viability
-- **Final Authority**: Supervisor has highest confidence and authority
-- **Documentation Standards**: Ensures output meets methodology requirements
-
-### 5. Consensus Hierarchical
-
-The system implements **hierarchical consensus** across three levels:
-
-#### Level 1: Worker Consensus
-- Individual agents produce analysis with confidence scores
-- No consensus required at this level (diversity is valued)
-
-#### Level 2: Coordinator Consensus
-- Applies consensus mechanism (e.g., weighted voting)
-- Identifies conflicts between worker perspectives
-- Resolves inconsistencies
-- Produces integrated synthesis
-
-#### Level 3: Supervisor Validation
-- Reviews coordinator synthesis
-- Validates completeness and feasibility
-- Makes final decisions
-- Generates authoritative output
-
-### 6. Agent-to-Agent (A2A) Communication Pattern
-
-The HiveMind uses a **standardized A2A protocol** to maintain context and ensure quality:
-
-```
+                         │
+                         ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    A2A COMMUNICATION FLOW                   │
+│                   CAPA DE ORQUESTACIÓN                       │
 │                                                             │
-│  System ──REQUEST──> Worker Agent                          │
-│  │                                                         │
-│  ├─> Message Type: REQUEST                                │
-│  ├─> Content: Business Need + Methodology Context          │
-│  ├─> Priority: MEDIUM                                     │
-│  └─> Metadata: Agent-specific instructions               │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │         HiveMindArchitecture                        │   │
+│  │  • Orquesta ejecución jerárquica                   │   │
+│  │  • Gestiona ciclo de vida de agentes               │   │
+│  │  • Coordina comunicación entre niveles             │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+┌─────────────────┐            ┌─────────────────┐
+│  CAPA DE AGENTES│            │ CAPA DE SERVICIOS│
+│                 │            │                 │
+│ • Worker Agents │            │ • Communication │
+│   (6 especial.) │            │   Bus           │
+│ • Coordinator   │            │ • Consensus     │
+│   Agent         │            │   Manager       │
+│ • Supervisor    │            │ • Methodology   │
+│   Agent         │            │   Factory       │
+└─────────────────┘            └─────────────────┘
+         │                               │
+         └───────────────┬───────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   CAPA DE INFRAESTRUCTURA                    │
 │                                                             │
-│  Worker Agent ──RESPONSE──> System                         │
-│  │                                                         │
-│  ├─> Message Type: RESPONSE                               │
-│  ├─> Content: Analysis + Confidence Score                 │
-│  ├─> Priority: MEDIUM                                     │
-│  └─> Metadata: Analysis type, methodology, timestamp      │
-│                                                             │
-│  System ──REQUEST──> Coordinator                           │
-│  │                                                         │
-│  ├─> Message Type: REQUEST                                │
-│  ├─> Content: All worker responses + synthesis request    │
-│  ├─> Priority: HIGH                                       │
-│  └─> Metadata: Consensus requirements                     │
-│                                                             │
-│  Coordinator ──RESPONSE──> System                         │
-│  │                                                         │
-│  ├─> Message Type: RESPONSE                               │
-│  ├─> Content: Integrated synthesis + consensus result     │
-│  ├─> Priority: HIGH                                       │
-│  └─> Metadata: Synthesis type, conflicts resolved        │
-│                                                             │
-│  System ──REQUEST──> Supervisor                            │
-│  │                                                         │
-│  ├─> Message Type: REQUEST                                │
-│  ├─> Content: Coordinator synthesis + finalization req    │
-│  ├─> Priority: HIGH                                       │
-│  └─> Metadata: Final authority requirements              │
-│                                                             │
-│  Supervisor ──RESPONSE──> System                           │
-│  │                                                         │
-│  ├─> Message Type: RESPONSE                               │
-│  ├─> Content: Final requirements document                 │
-│  ├─> Priority: HIGH                                       │
-│  └─> Metadata: Document type, status: final               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │   Gemini    │  │ PostgreSQL  │  │ File System │        │
+│  │   Client    │  │  Database   │  │  Storage    │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Context Preservation Mechanisms:**
-- **Message History**: All A2A messages logged with full context
-- **Parent-Child Relationships**: Messages linked to maintain traceability
-- **Metadata Preservation**: Each message carries forward all relevant context
-- **Methodology Context**: Methodology information propagated through all levels
-- **Consensus Results**: Consensus decisions preserved and referenced
+### 1.2 Componentes Principales
 
-**Quality Assurance Through A2A:**
-- **Message Validation**: Each message validated before processing
-- **Confidence Tracking**: Confidence scores tracked through all levels
-- **Error Handling**: Failed messages logged and retried
-- **Communication Analytics**: Statistics on message flow and success rates
+#### 1.2.1 HiveMindArchitecture
 
-### 7. Hierarchical Execution Pattern
+**Responsabilidad**: Orquestador principal que coordina la ejecución de los tres niveles de agentes.
 
-The HiveMind implements a **hierarchical execution pattern** that follows Product Management best practices:
+**Interfaces**:
+- `execute(business_need: str) -> HiveMindResult`: Ejecuta el proceso completo
+- `get_communication_statistics() -> Dict`: Obtiene estadísticas de comunicación
+- `export_communication_log() -> str`: Exporta log de comunicación
 
-#### Execution Order by Methodology
+**Dependencias**:
+- `GeminiClient`: Para comunicación con LLM
+- `CommunicationBus`: Para mensajería entre agentes
+- `ConsensusManager`: Para aplicación de mecanismos de consenso
+- `HierarchicalExecutionFlow`: Para ejecución secuencial de workers
 
-**Scrum Execution Flow:**
+#### 1.2.2 Capa de Agentes
+
+**BaseAgent (Clase Abstracta)**:
+- Define interfaz común para todos los agentes
+- Gestiona comunicación con Gemini API
+- Proporciona logging y manejo de errores
+- Adapta prompts según metodología seleccionada
+
+**Worker Agents (6 especialistas)**:
+1. **ProductManagerAgent**: Análisis de viabilidad empresarial, KPIs, stakeholders
+2. **ProductOwnerAgent**: User stories, backlog, criterios INVEST
+3. **UXUIAgent**: Journey maps, wireframes, design system, accesibilidad
+4. **TechnicalLeadAgent**: Arquitectura C4, tech stack, NFRs, patrones
+5. **ScrumMasterAgent**: Ceremonias, RAID, Definition of Ready, releases
+6. **QASpecialistAgent**: Test strategy, coverage, automation, quality gates
+
+**CoordinatorAgent**:
+- Sintetiza outputs de los 6 workers
+- Identifica y resuelve conflictos
+- Aplica mecanismo de consenso
+- Genera vista integrada
+
+**SupervisorAgent**:
+- Evalúa síntesis del coordinator
+- Valida completitud y viabilidad
+- Toma decisiones finales
+- Genera documento de requisitos técnicos
+
+#### 1.2.3 Capa de Servicios
+
+**CommunicationBus**:
+- Routing de mensajes entre agentes
+- Historial de mensajes
+- Logging y analytics
+- Soporte para protocolo A2A
+
+**ConsensusManager**:
+- Aplica estrategias de consenso (Weighted Voting, Majority, etc.)
+- Evalúa acuerdo entre agentes
+- Maneja desacuerdos
+
+**MethodologyFactory**:
+- Crea contextos específicos por metodología
+- Mapea roles y artefactos
+- Proporciona adaptación metodológica
+
+**HierarchicalExecutionFlow**:
+- Gestiona ejecución secuencial de workers
+- Valida dependencias entre fases
+- Preserva contexto entre fases
+
+#### 1.2.4 Capa de Infraestructura
+
+**GeminiClient**:
+- Wrapper para Google Gemini API
+- Manejo de rate limiting y retry
+- Gestión de tokens y costos
+
+**Database (PostgreSQL)**:
+- Persistencia de análisis y resultados
+- Historial de ejecuciones
+- Trazabilidad completa
+
+**PersistenceService**:
+- Abstracción para operaciones de BD
+- CRUD de análisis y respuestas de agentes
+- Queries y filtros
+
+### 1.3 Relaciones entre Componentes
+
 ```
-1. Business Foundation (ProductManager)
-   └─> Business viability and market analysis
-   
-2. Product Definition (ProductOwner) 
-   └─> User stories and product backlog (depends on #1)
-   
-3. User Experience (UXUI_Designer)
-   └─> UX design based on user stories (depends on #2)
-   
-4. Technical Foundation (TechnicalLead)
-   └─> Architecture based on UX requirements (depends on #3)
-   
-5. Process Optimization (ScrumMaster)
-   └─> Sprint planning based on technical requirements (depends on #4)
-   
-6. Quality Assurance (QA_Specialist)
-   └─> Testing strategy for sprint execution (depends on #5)
+HiveMindArchitecture
+    │
+    ├───► Worker Agents (6) ──► GeminiClient
+    │         │
+    │         └───► CommunicationBus
+    │
+    ├───► CoordinatorAgent ──► GeminiClient
+    │         │
+    │         ├───► ConsensusManager
+    │         └───► CommunicationBus
+    │
+    ├───► SupervisorAgent ──► GeminiClient
+    │         │
+    │         └───► CommunicationBus
+    │
+    ├───► CommunicationBus ──► Message Log
+    │
+    └───► PersistenceService ──► PostgreSQL Database
 ```
-
-**SAFe Execution Flow:**
-```
-1. Business Foundation (ProductManager - Portfolio)
-   └─> Strategic features and portfolio prioritization
-   
-2. Product Definition (ProductOwner - Program)
-   └─> Feature breakdown and enablers (depends on #1)
-   
-3. User Experience (UXUI_Designer)
-   └─> Solution-level user experience (depends on #2)
-   
-4. Technical Foundation (TechnicalLead)
-   └─> Solution architecture and enablers (depends on #3)
-   
-5. Process Optimization (ScrumMaster - Team)
-   └─> Program Increment planning (depends on #4)
-   
-6. Quality Assurance (QA_Specialist)
-   └─> Solution-level quality strategy (depends on #5)
-```
-
-**Kanban Execution Flow:**
-```
-1. Business Foundation (Service Request Manager)
-   └─> Service request analysis and business value
-   
-2. Product Definition (Flow Manager)
-   └─> Work item categorization and flow definition (depends on #1)
-   
-3. User Experience (UXUI_Designer)
-   └─> Continuous delivery user experience (depends on #2)
-   
-4. Technical Foundation (TechnicalLead)
-   └─> Flow-optimized architecture (depends on #3)
-   
-5. Process Optimization (Flow Coordinator)
-   └─> WIP limits and flow metrics (depends on #4)
-   
-6. Quality Assurance (QA_Specialist)
-   └─> Quality gates and flow metrics (depends on #5)
-```
-
-#### Dependency Management
-
-Each phase receives context from its dependencies:
-- **Previous Phase Outputs**: Complete analysis from dependent phases
-- **Confidence Scores**: Quality indicators from previous phases
-- **Methodology Context**: Methodology-specific context and requirements
-- **Business Need**: Original business need preserved throughout
-
-#### Quality Gates
-
-Each phase implements quality gates:
-- **Dependency Validation**: Ensures all dependencies are met
-- **Context Completeness**: Validates all required context is present
-- **Confidence Threshold**: Minimum confidence score required
-- **Methodology Compliance**: Ensures output follows methodology standards
 
 ---
 
-## System Components
+## 2. Vista de Proceso (Process View)
 
-### 1. Agent Layer
+La **Vista de Proceso** describe el comportamiento dinámico del sistema, mostrando cómo los componentes interactúan durante la ejecución. Esta vista es relevante para entender el flujo de trabajo y la concurrencia.
 
-#### BaseAgent (Abstract)
-- Common interface for all agents
-- Manages Gemini API communication
-- Provides logging and error handling
-
-#### Worker Agents (6 specialists)
-
-**ProductManagerAgent**
-- Analyzes business value and ROI
-- Evaluates market fit
-- Defines success metrics
-
-**ProductOwnerAgent**
-- Creates user stories
-- Prioritizes features
-- Maps user journeys
-
-**UXUIAgent**
-- Designs user experience
-- Defines interface requirements
-- Ensures accessibility
-
-**ScrumMasterAgent**
-- Identifies risks and dependencies
-- Plans execution approach
-- Estimates timeline
-
-**TechnicalLeadAgent**
-- Designs architecture
-- Selects technology stack
-- Defines technical requirements
-
-**QASpecialistAgent**
-- Defines testing strategy
-- Specifies quality gates
-- Plans test automation
-
-#### Coordinator Agent
-- Synthesizes worker outputs
-- Resolves conflicts
-- Creates integrated proposal
-
-#### Supervisor Agent
-- Makes final decisions
-- Generates requirements document
-- Provides executive guidance
-- **Quality Role**: Final authority with highest confidence (0.95)
-- **Context Role**: Receives complete synthesis and makes authoritative decisions
-
-### 2. Communication Layer
-
-#### CommunicationBus
-- Routes messages between agents
-- Maintains message history
-- Provides analytics and logging
-- **Quality Role**: Ensures all communications are logged and traceable
-- **Context Role**: Preserves complete message history and metadata
-
-#### A2A Protocol
-- Standardized message format
-- Message types: REQUEST, RESPONSE, NOTIFICATION, ERROR
-- Priority levels: HIGH, MEDIUM, LOW
-- **Quality Role**: Validates message format and content
-- **Context Role**: Maintains parent-child relationships and metadata
-
-### 3. Consensus Layer
-
-#### ConsensusManager
-- Applies consensus strategies
-- Evaluates agent agreement
-- Handles disagreements
-- **Quality Role**: Ensures consensus is achieved before proceeding
-- **Context Role**: Preserves consensus results and justifications
-
-#### Consensus Strategies
-- **Weighted Voting**: Agents have different weights based on expertise
-- **Majority**: Simple majority wins
-- **Unanimous**: All must agree
-- **Confidence Threshold**: Average confidence must exceed threshold
-- **Quality Role**: Each strategy provides different quality assurance levels
-- **Context Role**: Consensus decisions are preserved and referenced
-
-### 4. Methodology Layer
-
-#### MethodologyFactory
-- Creates methodology-specific contexts
-- Manages role mappings and artifacts
-- **Quality Role**: Ensures methodology compliance throughout process
-- **Context Role**: Provides methodology context to all agents
-
-#### MethodologyAdapter
-- Adapts agent prompts to methodology
-- Customizes output formats
-- **Quality Role**: Ensures outputs meet methodology standards
-- **Context Role**: Maintains methodology context across all levels
-
-### 5. Utilities Layer
-
-#### Config
-- Manages configuration from environment
-- Validates settings
-- Sets up logging
-
-#### GeminiClient
-- Wraps Google Gemini API
-- Handles API calls and errors
-- Provides token and cost estimation
-- **Quality Role**: Ensures reliable AI responses and error handling
-- **Context Role**: Maintains API context and response quality
-
----
-
-## HiveMind Quality Assurance Pattern
-
-The HiveMind implements a **distributed quality assurance pattern** where each component has specific quality responsibilities:
-
-### Quality Responsibility Matrix
-
-| Component | Quality Role | Context Role | Verification Method |
-|-----------|--------------|--------------|-------------------|
-| **Worker Agents** | Individual analysis quality | Preserve business need + methodology | Confidence scoring + completeness check |
-| **Coordinator** | Synthesis quality + conflict resolution | Preserve all worker responses | Consensus validation + conflict detection |
-| **Supervisor** | Final decision quality + feasibility | Preserve complete synthesis | Executive validation + methodology compliance |
-| **Consensus Manager** | Agreement quality | Preserve consensus decisions | Weighted voting + threshold validation |
-| **Communication Bus** | Message integrity | Preserve complete message history | Message validation + logging |
-| **Methodology Adapter** | Methodology compliance | Preserve methodology context | Prompt adaptation + output formatting |
-
-### Quality Gates
-
-The HiveMind implements **quality gates** at each level:
-
-#### Level 1 Quality Gate (Worker Agents)
-```
-Input Validation:
-├─> Business need completeness check
-├─> Methodology context validation
-└─> Agent-specific prompt validation
-
-Output Validation:
-├─> Confidence score ≥ 0.5
-├─> Analysis completeness check
-├─> Methodology-specific validation
-└─> Communication logging
-```
-
-#### Level 2 Quality Gate (Coordinator)
-```
-Input Validation:
-├─> All 6 worker responses present
-├─> Consensus requirements met
-└─> Methodology context preserved
-
-Output Validation:
-├─> Consensus level ≥ threshold (0.7)
-├─> All conflicts resolved
-├─> Synthesis completeness check
-└─> Methodology alignment verified
-```
-
-#### Level 3 Quality Gate (Supervisor)
-```
-Input Validation:
-├─> Coordinator synthesis present
-├─> Consensus results available
-└─> Complete context preserved
-
-Output Validation:
-├─> Confidence = 0.95 (highest authority)
-├─> Feasibility check passed
-├─> Methodology compliance verified
-└─> Final document standards met
-```
-
-### Context Preservation Verification
-
-The system verifies context preservation at each level:
-
-#### Context Completeness Check
-- **Level 1**: Each worker has original business need + methodology context
-- **Level 2**: Coordinator has all worker responses + original context
-- **Level 3**: Supervisor has complete synthesis + all previous context
-
-#### Context Integrity Verification
-- **Message History**: All A2A messages logged and traceable
-- **Metadata Preservation**: All metadata carried forward
-- **Methodology Consistency**: Methodology context maintained throughout
-- **Consensus Traceability**: All consensus decisions preserved and referenced
-
----
-
-## Agile Methodology Support
-
-The HiveMind system supports multiple Agile methodologies, adapting its behavior, roles, and outputs according to the selected methodology.
-
-### Supported Methodologies
-
-#### 1. Scrum
-- **Focus**: Sprint-based iterative development
-- **Roles**: Product Owner, Scrum Master, Development Team
-- **Artifacts**: Product Backlog, Sprint Backlog, Increment
-- **Ceremonies**: Sprint Planning, Daily Scrum, Sprint Review, Sprint Retrospective
-- **Metrics**: Velocity, Burndown Rate, Sprint Goal Achievement
-
-#### 2. SAFe (Scaled Agile Framework)
-- **Focus**: Large-scale enterprise agility
-- **Roles**: Product Manager (Portfolio), Product Owner (Program), Scrum Master (Team)
-- **Artifacts**: Portfolio Backlog, Program Backlog, Team Backlog, Solution Intent
-- **Ceremonies**: Portfolio Sync, Program Increment Planning, Scrum of Scrums
-- **Metrics**: Program Predictability, Feature Delivery Rate, Solution Quality
-
-#### 3. Kanban
-- **Focus**: Continuous flow and work visualization
-- **Roles**: Service Request Manager, Flow Manager, Flow Coordinator
-- **Artifacts**: Kanban Board, Work Item Types, Service Level Agreements
-- **Ceremonies**: Replenishment Meeting, Flow Review, Service Delivery Review
-- **Metrics**: Lead Time, Cycle Time, Throughput, Flow Efficiency
-
-### Methodology Adaptation
-
-The system automatically adapts:
-
-1. **Agent Roles**: Each agent's role and responsibilities change based on methodology
-2. **System Prompts**: Agent prompts are enhanced with methodology-specific context
-3. **Output Structure**: Generated documents follow methodology-specific formats
-4. **Artifacts**: Different methodologies produce different types of deliverables
-5. **Ceremonies**: Planning and review processes are methodology-specific
-
-### Methodology Selection
-
-Users can select methodology through:
-- **CLI Parameter**: `--methodology scrum|safe|kanban`
-- **Interactive Mode**: Menu-driven selection
-- **Default**: Scrum (for quiet mode)
-
----
-
-## Architecture Views (4+1)
-
-The HiveMind architecture can be viewed from multiple perspectives following the 4+1 architectural view model:
-
-### 1. Logical View
-Shows the functional decomposition and relationships between components.
+### 2.1 Flujo de Ejecución Principal
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    LOGICAL ARCHITECTURE                      │
+│                    INICIO DEL PROCESO                       │
 │                                                             │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │   Methodology   │    │   Agent Layer    │                │
-│  │   Factory       │    │                 │                │
-│  │                 │    │  ┌─────────────┐ │                │
-│  │ • Scrum         │    │  │   Worker    │ │                │
-│  │ • SAFe          │    │  │   Agents    │ │                │
-│  │ • Kanban        │    │  │   (6)       │ │                │
-│  └─────────────────┘    │  └─────────────┘ │                │
-│                         │                 │                │
-│  ┌─────────────────┐    │  ┌─────────────┐ │                │
-│  │   Consensus     │    │  │ Coordinator │ │                │
-│  │   Manager       │    │  │   Agent     │ │                │
-│  │                 │    │  └─────────────┘ │                │
-│  │ • Weighted      │    │                 │                │
-│  │ • Majority      │    │  ┌─────────────┐ │                │
-│  │ • Unanimous     │    │  │ Supervisor  │ │                │
-│  └─────────────────┘    │  │   Agent     │ │                │
-│                         │  └─────────────┘ │                │
-│  ┌─────────────────┐    └─────────────────┘                │
-│  │ Communication   │                                         │
-│  │ Bus             │                                         │
-│  │                 │                                         │
-│  │ • A2A Protocol  │                                         │
-│  │ • Message       │                                         │
-│  │   Routing       │                                         │
-│  └─────────────────┘                                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2. Process View
-Shows the dynamic behavior and execution flow.
-
-```
+│  1. Usuario proporciona:                                    │
+│     • Business Need (descripción del negocio)              │
+│     • Metodología (Scrum/SAFe/Kanban)                      │
+│     • Estrategia de Consenso                               │
+│                                                             │
+│  2. Sistema inicializa:                                     │
+│     • Carga configuración                                   │
+│     • Inicializa Gemini Client                              │
+│     • Crea contexto metodológico                            │
+│     • Configura CommunicationBus                            │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    PROCESS ARCHITECTURE                      │
+│          FASE 1: ANÁLISIS JERÁRQUICO DE WORKERS             │
+│              (Ejecución Secuencial con Dependencias)        │
 │                                                             │
-│  ┌─────────────────┐                                        │
-│  │   User Input    │                                        │
-│  │                 │                                        │
-│  │ • Business Need │                                        │
-│  │ • Methodology   │                                        │
-│  │   Selection     │                                        │
-│  └─────────┬───────┘                                        │
-│            │                                                │
-│            ▼                                                │
-│  ┌─────────────────┐                                        │
-│  │   Initialization│                                        │
-│  │                 │                                        │
-│  │ • Load Config   │                                        │
-│  │ • Setup Agents  │                                        │
-│  │ • Select        │                                        │
-│  │   Methodology   │                                        │
-│  └─────────┬───────┘                                        │
-│            │                                                │
-│            ▼                                                │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │   Level 1:      │    │   Level 2:      │                │
-│  │   Worker        │    │   Coordinator   │                │
-│  │   Processing    │    │   Synthesis     │                │
-│  │                 │    │                 │                │
-│  │ ┌─────────────┐ │    │ • Collect       │                │
-│  │ │ ProductMgr  │ │    │   Responses     │                │
-│  │ └─────────────┘ │    │ • Apply         │                │
-│  │ ┌─────────────┐ │    │   Consensus     │                │
-│  │ │ ProductOwner│ │    │ • Resolve       │                │
-│  │ └─────────────┘ │    │   Conflicts     │                │
-│  │ ┌─────────────┐ │    │ • Synthesize    │                │
-│  │ │ UX/UI       │ │    │   Integration    │                │
-│  │ └─────────────┘ │    └─────────┬───────┘                │
-│  │ ┌─────────────┐ │              │                        │
-│  │ │ ScrumMaster │ │              ▼                        │
-│  │ └─────────────┘ │    ┌─────────────────┐                │
-│  │ ┌─────────────┐ │    │   Level 3:      │                │
-│  │ │ Technical   │ │    │   Supervisor    │                │
-│  │ │ Lead        │ │    │   Finalization  │                │
-│  │ └─────────────┘ │    │                 │                │
-│  │ ┌─────────────┐ │    │ • Validate      │                │
-│  │ │ QA          │ │    │ • Make          │                │
-│  │ │ Specialist  │ │    │   Decisions     │                │
-│  │ └─────────────┘ │    │ • Generate      │                │
-│  └─────────┬───────┘    │   Document      │                │
-│            │             └─────────┬───────┘                │
-│            │                       │                        │
-│            └───────────────────────┘                        │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────┐                                        │
-│  │   Output        │                                        │
-│  │                 │                                        │
-│  │ • Requirements  │                                        │
-│  │   Document      │                                        │
-│  │ • Communication │                                        │
-│  │   Log           │                                        │
-│  │ • Metadata      │                                        │
-│  └─────────────────┘                                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 3. Physical View
-Shows the deployment and infrastructure components.
-
-```
+│  Step 1: Business Foundation                                │
+│  ├─> ProductManager.process()                              │
+│  │   • Input: Business Need + Methodology Context          │
+│  │   • Output: Business Analysis + Confidence              │
+│  │   • Dependencias: Ninguna (fase inicial)                │
+│  │                                                         │
+│  Step 2: Product Definition                                 │
+│  ├─> ProductOwner.process()                                │
+│  │   • Input: Business Need + PM Output                    │
+│  │   • Output: User Stories + Backlog                      │
+│  │   • Dependencias: Step 1                                │
+│  │                                                         │
+│  Step 3: User Experience                                    │
+│  ├─> UXUI_Designer.process()                               │
+│  │   • Input: Business Need + PO Output                    │
+│  │   • Output: UX Design + Wireframes                      │
+│  │   • Dependencias: Step 2                                │
+│  │                                                         │
+│  Step 4: Technical Foundation                               │
+│  ├─> TechnicalLead.process()                               │
+│  │   • Input: Business Need + UX Output                    │
+│  │   • Output: Architecture + Tech Stack                   │
+│  │   • Dependencias: Step 3                                │
+│  │                                                         │
+│  Step 5: Process Optimization                               │
+│  ├─> ScrumMaster.process()                                 │
+│  │   • Input: Business Need + Tech Lead Output             │
+│  │   • Output: Process + Risk Analysis                     │
+│  │   • Dependencias: Step 4                                │
+│  │                                                         │
+│  Step 6: Quality Assurance                                  │
+│  ├─> QA_Specialist.process()                               │
+│  │   • Input: Business Need + SM Output                    │
+│  │   • Output: Quality Strategy + Test Plan                │
+│  │   • Dependencias: Step 5                                │
+│                                                             │
+│  Output: 6 Respuestas de Workers con Contexto Preservado   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   PHYSICAL ARCHITECTURE                      │
+│          FASE 2: SÍNTESIS Y COORDINACIÓN                    │
 │                                                             │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │   Client        │    │   Application   │                │
-│  │   Environment   │    │   Server        │                │
-│  │                 │    │                 │                │
-│  │ • Terminal      │    │ • Python        │                │
-│  │ • CLI Interface │    │   Runtime       │                │
-│  │ • Rich UI       │    │ • HiveMind      │                │
-│  │ • File I/O      │    │   Process       │                │
-│  └─────────┬───────┘    │ • Agent         │                │
-│            │             │   Orchestration │                │
-│            │             └─────────┬───────┘                │
-│            │                       │                        │
-│            └───────────────────────┘                        │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────┐                                        │
-│  │   External      │                                        │
-│  │   Services      │                                        │
-│  │                 │                                        │
-│  │ • Google        │                                        │
-│  │   Gemini API    │                                        │
-│  │ • Environment   │                                        │
-│  │   Variables     │                                        │
-│  │ • File System   │                                        │
-│  │   Storage       │                                        │
-│  └─────────────────┘                                        │
-│                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Data          │                                        │
-│  │   Persistence   │                                        │
-│  │                 │                                        │
-│  │ • JSON Output   │                                        │
-│  │   Files         │                                        │
-│  │ • Communication │                                        │
-│  │   Logs          │                                        │
-│  │ • Configuration │                                        │
-│  │   Files         │                                        │
-│  └─────────────────┘                                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 4. Development View
-Shows the development organization and module structure.
-
-```
+│  Coordinator.process()                                      │
+│  ├─> Input: Business Need + 6 Worker Responses             │
+│  ├─> Actividades:                                          │
+│  │   • Identifica sinergias entre análisis                │
+│  │   • Detecta conflictos e inconsistencias               │
+│  │   • Resuelve conflictos usando metodología             │
+│  │   • Crea síntesis integrada                            │
+│  ├─> ConsensusManager.apply_consensus()                    │
+│  │   • Aplica estrategia de consenso                      │
+│  │   • Calcula nivel de acuerdo                           │
+│  │   • Genera justificación                               │
+│  └─> Output: Integrated Synthesis + Consensus Result       │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  DEVELOPMENT ARCHITECTURE                   │
+│          FASE 3: DECISIÓN FINAL Y DOCUMENTACIÓN             │
 │                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Source        │                                        │
-│  │   Structure     │                                        │
-│  │                 │                                        │
-│  │ src/            │                                        │
-│  │ ├── main.py     │  ← CLI Entry Point                    │
-│  │ ├── agents/     │  ← Agent Implementations              │
-│  │ │   ├── base_agent.py                                    │
-│  │ │   ├── worker_agents.py                                 │
-│  │ │   ├── coordinator_agent.py                             │
-│  │ │   └── supervisor_agent.py                              │
-│  │ ├── hivemind/   │  ← Core Architecture                  │
-│  │ │   ├── architecture.py                                  │
-│  │ │   ├── methodology.py   ← NEW: Methodology Support     │
-│  │ │   ├── communication.py                                 │
-│  │ │   └── consensus.py                                     │
-│  │ └── utils/      │  ← Utilities                          │
-│  │     ├── config.py                                        │
-│  │     └── gemini_client.py                                 │
-│  └─────────────────┘                                        │
-│                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Dependencies  │                                        │
-│  │                 │                                        │
-│  │ • google-genai  │  ← Gemini API Client                  │
-│  │ • pydantic      │  ← Data Validation                    │
-│  │ • rich          │  ← Terminal UI                        │
-│  │ • python-dotenv │  ← Environment Management             │
-│  └─────────────────┘                                        │
-│                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Configuration │                                        │
-│  │                 │                                        │
-│  │ • .env          │  ← Environment Variables              │
-│  │ • requirements.txt ← Dependencies                       │
-│  │ • setup.sh      │  ← Setup Script                       │
-│  └─────────────────┘                                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 5. Use Case View (+1)
-Shows the interaction between users and the system.
-
-```
+│  Supervisor.process()                                       │
+│  ├─> Input: Business Need + Coordinator Synthesis          │
+│  ├─> Actividades:                                          │
+│  │   • Evalúa síntesis del coordinator                    │
+│  │   • Valida completitud y viabilidad                    │
+│  │   • Toma decisiones finales                            │
+│  │   • Genera documento de requisitos técnicos            │
+│  │   • Aplica formato metodológico                        │
+│  └─> Output: Final Technical Requirements Document         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    USE CASE ARCHITECTURE                    │
+│                    PERSISTENCIA Y RESPUESTA                 │
 │                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Primary       │                                        │
-│  │   Actors        │                                        │
-│  │                 │                                        │
-│  │ • Product       │                                        │
-│  │   Manager       │                                        │
-│  │ • Business      │                                        │
-│  │   Analyst       │                                        │
-│  │ • Development   │                                        │
-│  │   Team Lead     │                                        │
-│  │ • Scrum Master  │                                        │
-│  └─────────────────┘                                        │
-│            │                                                 │
-│            ▼                                                 │
-│  ┌─────────────────┐                                        │
-│  │   Use Cases     │                                        │
-│  │                 │                                        │
-│  │ 1. Select        │                                        │
-│  │    Methodology   │                                        │
-│  │    (Scrum/SAFe/  │                                        │
-│  │    Kanban)       │                                        │
-│  │                 │                                        │
-│  │ 2. Input         │                                        │
-│  │    Business      │                                        │
-│  │    Need          │                                        │
-│  │                 │                                        │
-│  │ 3. Execute       │                                        │
-│  │    HiveMind      │                                        │
-│  │    Analysis      │                                        │
-│  │                 │                                        │
-│  │ 4. Review        │                                        │
-│  │    Results       │                                        │
-│  │                 │                                        │
-│  │ 5. Export        │                                        │
-│  │    Requirements  │                                        │
-│  │    Document      │                                        │
-│  └─────────────────┘                                        │
+│  PersistenceService.save_analysis()                         │
+│  ├─> Guarda análisis en PostgreSQL                         │
+│  ├─> Guarda respuestas de todos los agentes                │
+│  ├─> Guarda log de comunicación                            │
+│  └─> Genera ID único del análisis                          │
 │                                                             │
-│  ┌─────────────────┐                                        │
-│  │   Secondary     │                                        │
-│  │   Actors        │                                        │
-│  │                 │                                        │
-│  │ • Google        │                                        │
-│  │   Gemini API    │                                        │
-│  │ • File System   │                                        │
-│  │ • Configuration │                                        │
-│  │   Manager       │                                        │
-│  └─────────────────┘                                        │
+│  Sistema retorna:                                           │
+│  • HiveMindResult con todos los outputs                    │
+│  • Communication Log completo                              │
+│  • Metadata de ejecución                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Methodology-Specific Views
+### 2.2 Flujo de Comunicación A2A
 
-Each methodology has specific architectural considerations:
-
-#### Scrum View
-- **Sprint-based execution**: Analysis organized in sprints
-- **Product Backlog focus**: Requirements prioritized as backlog items
-- **Scrum ceremonies**: Planning, review, and retrospective phases
-
-#### SAFe View
-- **Portfolio level**: Strategic alignment and feature prioritization
-- **Program level**: Cross-team coordination and PI planning
-- **Team level**: Individual team execution and delivery
-
-#### Kanban View
-- **Flow-based execution**: Continuous analysis and delivery
-- **WIP limits**: Controlled work in progress
-- **Service level agreements**: Defined delivery commitments
-
----
-
-### End-to-End Flow
-
-```
-1. User Input
-   │
-   ├─> Business Need Description
-   ├─> Methodology Selection (Scrum/SAFe/Kanban)
-   │
-2. System Initialization
-   │
-   ├─> Load Configuration
-   ├─> Initialize Methodology Context
-   ├─> Setup Agents with Methodology
-   │
-3. Level 1: Worker Processing (Parallel)
-   │
-   ├─> ProductManager.process() ──> Response₁ (Methodology-adapted)
-   ├─> ProductOwner.process() ──> Response₂ (Methodology-adapted)
-   ├─> UXUI.process() ──> Response₃ (Methodology-adapted)
-   ├─> ScrumMaster.process() ──> Response₄ (Methodology-adapted)
-   ├─> TechnicalLead.process() ──> Response₅ (Methodology-adapted)
-   └─> QASpecialist.process() ──> Response₆ (Methodology-adapted)
-   │
-4. Level 2: Coordinator Synthesis
-   │
-   ├─> Collect all worker responses
-   ├─> Apply consensus mechanism
-   ├─> Identify conflicts
-   ├─> Synthesize integrated view (Methodology-specific)
-   └─> Coordinator.process() ──> Synthesis
-   │
-5. Level 3: Supervisor Finalization
-   │
-   ├─> Evaluate synthesis
-   ├─> Validate completeness
-   ├─> Make final decisions
-   └─> Supervisor.process() ──> Requirements Document (Methodology-adapted)
-   │
-6. Output
-   │
-   └─> Technical Requirements JSON (Methodology-specific format)
-   └─> Communication Log with Methodology Metadata
-```
-
-### Message Flow via A2A Protocol
+Durante la ejecución, todos los agentes comunican a través del protocolo A2A:
 
 ```
 System ──REQUEST──> Worker Agent
-Worker Agent ──RESPONSE──> System
+    │
+    ├─> Message Type: REQUEST
+    ├─> Content: Business Need + Methodology Context
+    ├─> Priority: MEDIUM
+    └─> Metadata: Agent-specific instructions
+
+Worker Agent ──RESPONSE──> CommunicationBus
+    │
+    ├─> Message Type: RESPONSE
+    ├─> Content: Analysis + Confidence Score
+    ├─> Priority: MEDIUM
+    └─> Metadata: Analysis type, methodology, timestamp
+
+CommunicationBus ──LOG──> Message History
+    │
+    └─> Preserva para trazabilidad
 
 System ──REQUEST──> Coordinator
-Coordinator ──collects──> Worker Responses
-Coordinator ──RESPONSE──> System
+    │
+    ├─> Message Type: REQUEST
+    ├─> Content: All worker responses + synthesis request
+    ├─> Priority: HIGH
+    └─> Metadata: Consensus requirements
+
+Coordinator ──RESPONSE──> CommunicationBus
+    │
+    ├─> Message Type: RESPONSE
+    ├─> Content: Integrated synthesis + consensus result
+    ├─> Priority: HIGH
+    └─> Metadata: Synthesis type, conflicts resolved
 
 System ──REQUEST──> Supervisor
-Supervisor ──receives──> Coordinator Synthesis
-Supervisor ──RESPONSE──> System (Final Document)
+    │
+    ├─> Message Type: REQUEST
+    ├─> Content: Coordinator synthesis + finalization req
+    ├─> Priority: HIGH
+    └─> Metadata: Final authority requirements
+
+Supervisor ──RESPONSE──> CommunicationBus
+    │
+    ├─> Message Type: RESPONSE
+    ├─> Content: Final requirements document
+    ├─> Priority: HIGH
+    └─> Metadata: Document type, status: final
+```
+
+### 2.3 Preservación de Contexto
+
+El sistema mantiene **contexto completo** en cada nivel:
+
+**Nivel 1 (Workers)**:
+- Cada worker recibe: Business Need + Methodology Context + Dependencias
+- Output incluye: Análisis + Confidence + Metadata
+
+**Nivel 2 (Coordinator)**:
+- Recibe: Business Need + 6 Worker Responses (completos)
+- Output incluye: Synthesis + Consensus Result + Conflicts Resolved
+
+**Nivel 3 (Supervisor)**:
+- Recibe: Business Need + Coordinator Synthesis + Consensus Results
+- Output incluye: Final Document + Executive Summary + Recommendations
+
+---
+
+## 3. Vista Física (Physical View)
+
+La **Vista Física** describe la topología del sistema, el despliegue y la infraestructura. Esta vista es relevante para DevOps y administradores de sistemas.
+
+### 3.1 Arquitectura de Despliegue
+
+El sistema HiveMind se despliega utilizando **Docker Compose**, proporcionando un entorno completo y reproducible:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    DOCKER COMPOSE NETWORK                    │
+│                    (hivemind-network)                        │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │          Frontend Container                         │   │
+│  │  • Nginx: Servidor web estático                     │   │
+│  │  • React App (build production)                     │   │
+│  │  • Puerto: 3002                                     │   │
+│  │  • Volúmenes:                                        │   │
+│  │    - ./frontend/dist → /usr/share/nginx/html        │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                         │                                    │
+│                         │ HTTP/WebSocket                     │
+│                         ▼                                    │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │          Backend API Container                      │   │
+│  │  • FastAPI Application                              │   │
+│  │  • Uvicorn ASGI Server                              │   │
+│  │  • Puerto: 8000 (interno) / 8002 (host)            │   │
+│  │  • Variables de entorno:                            │   │
+│  │    - GEMINI_API_KEY                                 │   │
+│  │    - DATABASE_URL                                   │   │
+│  │  • Volúmenes:                                        │   │
+│  │    - ./logs → /app/logs                             │   │
+│  │    - ./output → /app/output                         │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                         │                                    │
+│         ┌───────────────┴───────────────┐                  │
+│         │                               │                   │
+│         ▼                               ▼                   │
+│  ┌──────────────┐            ┌──────────────┐             │
+│  │  PostgreSQL  │            │  Gemini API  │             │
+│  │  Container   │            │  (External)  │             │
+│  │              │            │              │             │
+│  │  • PostgreSQL│            │  • Google    │             │
+│  │    13        │            │    Gemini    │             │
+│  │  • Puerto:   │            │    REST API  │             │
+│  │    5432      │            │              │             │
+│  │  • Database: │            │  • HTTPS     │             │
+│  │    hivemind  │            │              │             │
+│  │  • Usuario:  │            │              │             │
+│  │    hivemind  │            │              │             │
+│  └──────────────┘            └──────────────┘             │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │          CLI Container (Opcional)                   │   │
+│  │  • CLI tool para análisis directo                   │   │
+│  │  • Mismo código base que API                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Componentes de Infraestructura
+
+#### 3.2.1 Frontend Container
+
+**Tecnología**: Nginx + React (build estático)
+**Puerto**: 3002 (host) → 80 (container)
+**Origen**: `frontend/Dockerfile`
+
+**Características**:
+- Servidor web estático Nginx
+- Aplicación React compilada (Vite build)
+- Soporte para SPA (Single Page Application)
+- Proxy de API configurado en Nginx
+
+#### 3.2.2 Backend API Container
+
+**Tecnología**: Python 3.11 + FastAPI + Uvicorn
+**Puerto**: 8000 (container) → 8002 (host)
+**Origen**: `backend/Dockerfile`
+
+**Características**:
+- Servidor ASGI con Uvicorn
+- API REST con FastAPI
+- WebSocket para streaming en tiempo real
+- Integración con PostgreSQL
+- Cliente Gemini para LLM
+
+**Dependencias**:
+- PostgreSQL (healthcheck antes de iniciar)
+- Variables de entorno desde `.env`
+
+#### 3.2.3 PostgreSQL Container
+
+**Tecnología**: PostgreSQL 13
+**Puerto**: 5432 (interno)
+**Origen**: `postgres:13-alpine` (imagen oficial)
+
+**Características**:
+- Base de datos relacional
+- Schemas para análisis y respuestas
+- Índices para queries comunes
+- Healthcheck para verificar disponibilidad
+
+**Tablas Principales**:
+- `analyses`: Análisis completos
+- `agent_responses`: Respuestas individuales de agentes
+
+#### 3.2.4 Servicios Externos
+
+**Google Gemini API**:
+- Endpoint: `https://generativelanguage.googleapis.com/v1beta`
+- Autenticación: API Key
+- Protocolo: HTTPS REST
+- Rate Limiting: Implementado con exponential backoff
+
+### 3.3 Volúmenes y Persistencia
+
+**Volúmenes Compartidos**:
+- `./logs` → `/app/logs`: Logs de aplicación
+- `./output` → `/app/output`: Archivos de salida
+
+**Persistencia de Datos**:
+- PostgreSQL: Datos persistentes en volumen Docker
+- Volumen nombrado: `tutorial_hive_mind_postgres_data`
+
+### 3.4 Red y Comunicación
+
+**Docker Network**: `hivemind-network`
+- Red interna para comunicación entre contenedores
+- Resolución DNS automática entre servicios
+- Aislamiento de red externa
+
+**Puertos Expuestos**:
+- `3002`: Frontend (HTTP)
+- `8002`: Backend API (HTTP + WebSocket)
+
+---
+
+## 4. Vista de Desarrollo (Development View)
+
+La **Vista de Desarrollo** describe la organización del código, la estructura de módulos y las dependencias. Esta vista es relevante para desarrolladores.
+
+### 4.1 Estructura del Proyecto
+
+```
+tutorial_hive_mind/
+├── backend/                          # Backend (Python/FastAPI)
+│   ├── Dockerfile                    # Imagen Docker para backend
+│   ├── .env                          # Variables de entorno
+│   ├── requirements.txt              # Dependencias Python
+│   └── src/
+│       ├── __init__.py
+│       ├── main.py                   # CLI Entry Point
+│       ├── agents/                   # Implementación de Agentes
+│       │   ├── __init__.py
+│       │   ├── base_agent.py         # Clase Base Abstracta
+│       │   ├── worker_agents.py      # 6 Worker Agents
+│       │   ├── coordinator_agent.py  # Coordinator Agent
+│       │   └── supervisor_agent.py   # Supervisor Agent
+│       ├── api/                      # API REST (FastAPI)
+│       │   ├── __init__.py
+│       │   ├── main.py               # FastAPI App
+│       │   ├── endpoints.py          # REST Endpoints
+│       │   └── models.py             # Pydantic Models
+│       ├── db/                       # Capa de Persistencia
+│       │   ├── __init__.py
+│       │   ├── database.py           # SQLAlchemy Setup
+│       │   ├── models.py             # SQLAlchemy Models
+│       │   └── persistence.py        # Persistence Service
+│       ├── hivemind/                 # Core Architecture
+│       │   ├── __init__.py
+│       │   ├── architecture.py       # HiveMindArchitecture
+│       │   ├── communication.py      # A2A Protocol
+│       │   ├── consensus.py          # Consensus Mechanisms
+│       │   ├── methodology.py        # Methodology Support
+│       │   └── hierarchical_flow.py  # Hierarchical Execution
+│       └── utils/                    # Utilidades
+│           ├── __init__.py
+│           ├── config.py             # Configuration Management
+│           └── gemini_client.py      # Gemini API Client
+│
+├── frontend/                         # Frontend (React/Vite)
+│   ├── Dockerfile                    # Imagen Docker para frontend
+│   ├── package.json                  # Dependencias NPM
+│   ├── vite.config.js                # Configuración Vite
+│   ├── index.html                    # HTML Entry Point
+│   ├── styles*.css                   # Estilos CSS
+│   └── src/
+│       ├── main.jsx                  # React Entry Point
+│       ├── App.jsx                   # Componente Principal
+│       ├── api/                      # API Client
+│       │   └── client.js             # Axios + WebSocket
+│       ├── components/               # Componentes React
+│       │   ├── AgentContentView.jsx
+│       │   ├── DashboardExecutive.jsx
+│       │   ├── ResultSummary.jsx
+│       │   ├── SpecializedAgentsTabs.jsx
+│       │   └── ...
+│       ├── context/                  # Context API
+│       │   └── AppContext.jsx        # Global State
+│       └── pages/                    # Páginas
+│           ├── Dashboard.jsx
+│           ├── Analyze.jsx
+│           └── History.jsx
+│
+├── docs/                             # Documentación
+│   ├── ARCHITECTURE.md               # Este documento
+│   ├── API_REFERENCE.md              # Referencia de API
+│   └── TUTORIAL.md                   # Tutorial de uso
+│
+├── docker-compose.yml                # Orquestación Docker
+└── README.md                         # Documentación principal
+```
+
+### 4.2 Módulos Principales
+
+#### 4.2.1 Módulo `hivemind/architecture.py`
+
+**Responsabilidad**: Orquestación principal del sistema
+
+**Clases Principales**:
+- `HiveMindArchitecture`: Clase principal de orquestación
+- `HiveMindResult`: Modelo de resultado completo
+
+**Dependencias**:
+- `agents.*`: Todos los tipos de agentes
+- `hivemind.communication`: CommunicationBus
+- `hivemind.consensus`: ConsensusManager
+- `hivemind.methodology`: MethodologyFactory
+- `hivemind.hierarchical_flow`: HierarchicalExecutionFlow
+- `utils.gemini_client`: GeminiClient
+
+#### 4.2.2 Módulo `agents/`
+
+**Responsabilidad**: Implementación de todos los agentes
+
+**Jerarquía de Clases**:
+```
+BaseAgent (Abstract)
+    │
+    ├─── Worker Agents
+    │     ├── ProductManagerAgent
+    │     ├── ProductOwnerAgent
+    │     ├── UXUIAgent
+    │     ├── TechnicalLeadAgent
+    │     ├── ScrumMasterAgent
+    │     └── QASpecialistAgent
+    │
+    ├─── CoordinatorAgent
+    └─── SupervisorAgent
+```
+
+**Características Comunes** (heredadas de BaseAgent):
+- `process(input_data, context) -> AgentResponse`
+- `get_system_prompt() -> str`
+- `get_adapted_system_prompt() -> str` (metodología-aware)
+- `_call_gemini(prompt, system_instruction) -> str`
+- `_extract_confidence(response_text) -> float`
+
+#### 4.2.3 Módulo `hivemind/communication.py`
+
+**Responsabilidad**: Protocolo A2A y comunicación entre agentes
+
+**Clases Principales**:
+- `CommunicationBus`: Bus de mensajería
+- `A2AMessage`: Modelo de mensaje (Pydantic)
+- `MessageType`: Enum (REQUEST, RESPONSE, NOTIFICATION, ERROR)
+- `MessagePriority`: Enum (HIGH, MEDIUM, LOW)
+
+**Características**:
+- Message routing
+- Message history
+- Thread tracking (parent-child relationships)
+- Statistics and analytics
+
+#### 4.2.4 Módulo `hivemind/consensus.py`
+
+**Responsabilidad**: Mecanismos de consenso
+
+**Clases Principales**:
+- `ConsensusManager`: Gestiona aplicación de consenso
+- `ConsensusStrategy`: Enum (WEIGHTED_VOTING, MAJORITY, UNANIMOUS, CONFIDENCE_THRESHOLD)
+- `ConsensusResult`: Modelo de resultado (Pydantic)
+
+#### 4.2.5 Módulo `hivemind/methodology.py`
+
+**Responsabilidad**: Soporte multi-metodología
+
+**Clases Principales**:
+- `AgileMethodology`: Enum (SCRUM, SAFE, KANBAN)
+- `MethodologyContext`: Dataclass con contexto metodológico
+- `MethodologyFactory`: Factory para crear contextos
+- `MethodologyAdapter`: Adapta prompts y outputs
+
+#### 4.2.6 Módulo `hivemind/hierarchical_flow.py`
+
+**Responsabilidad**: Ejecución jerárquica de workers
+
+**Clases Principales**:
+- `HierarchicalExecutionFlow`: Gestiona flujo secuencial
+- Define orden de ejecución según dependencias
+- Valida quality gates entre fases
+- Preserva contexto entre fases
+
+#### 4.2.7 Módulo `api/`
+
+**Responsabilidad**: API REST y WebSocket
+
+**Endpoints Principales**:
+- `POST /api/v1/analyze`: Análisis REST (síncrono)
+- `WebSocket /api/v1/ws/analyze`: Análisis streaming (asíncrono)
+- `GET /api/v1/history`: Historial de análisis
+- `GET /api/v1/analyses/{id}`: Análisis específico
+- `GET /api/v1/health`: Health check
+- `GET /api/v1/info`: Información del sistema
+
+**Modelos**:
+- `BusinessNeedRequest`: Request model
+- `HiveMindResponseModel`: Response model
+- `ErrorResponseModel`: Error model
+
+#### 4.2.8 Módulo `db/`
+
+**Responsabilidad**: Persistencia de datos
+
+**Modelos SQLAlchemy**:
+- `Analysis`: Modelo de análisis completo
+- `AgentResponse`: Modelo de respuesta de agente
+
+**Servicios**:
+- `PersistenceService`: Abstracción para operaciones de BD
+- `init_db()`: Inicialización de base de datos
+- `get_db()`: Dependency injection para FastAPI
+
+### 4.3 Dependencias Externas
+
+**Python (Backend)**:
+- `fastapi`: Framework web
+- `uvicorn`: Servidor ASGI
+- `sqlalchemy`: ORM
+- `alembic`: Migrations (futuro)
+- `google-genai`: Cliente Gemini
+- `pydantic`: Validación de datos
+- `python-dotenv`: Gestión de variables de entorno
+
+**JavaScript (Frontend)**:
+- `react`: Framework UI
+- `react-dom`: DOM rendering
+- `vite`: Build tool
+- `axios`: HTTP client
+- `websocket`: WebSocket client
+
+**Infraestructura**:
+- `docker`: Containerización
+- `docker-compose`: Orquestación
+- `postgres:13-alpine`: Base de datos
+- `nginx:alpine`: Servidor web
+
+---
+
+## 5. Vista de Casos de Uso (Use Case View)
+
+La **Vista de Casos de Uso** describe las interacciones entre usuarios y el sistema. Esta vista es relevante para product managers y stakeholders.
+
+### 5.1 Actores Principales
+
+**Usuario Final**:
+- Product Manager
+- Business Analyst
+- Development Team Lead
+- Scrum Master
+
+**Sistema**:
+- HiveMind Architecture
+- Google Gemini API
+- PostgreSQL Database
+
+### 5.2 Casos de Uso Principales
+
+#### CU-1: Ejecutar Análisis desde CLI
+
+**Actor**: Usuario Final
+**Precondiciones**: Sistema configurado con API key de Gemini
+
+**Flujo Principal**:
+1. Usuario ejecuta: `python src/main.py --business-need "..." --methodology scrum`
+2. Sistema inicializa HiveMindArchitecture
+3. Sistema ejecuta flujo jerárquico completo
+4. Sistema muestra progreso en terminal
+5. Sistema guarda resultado en archivo JSON
+6. Sistema muestra resumen de resultados
+
+**Flujo Alternativo** (Error):
+- Si API key inválida → Error y aborto
+- Si análisis falla → Log de error y resultado parcial
+
+**Resultado Esperado**: Archivo JSON con requisitos técnicos completos
+
+#### CU-2: Ejecutar Análisis desde REST API
+
+**Actor**: Usuario Final (aplicación cliente)
+**Precondiciones**: API corriendo y accesible
+
+**Flujo Principal**:
+1. Cliente envía POST a `/api/v1/analyze` con business_need
+2. API valida request
+3. API ejecuta análisis (síncrono)
+4. API guarda resultado en PostgreSQL
+5. API retorna JSON con resultado completo
+
+**Flujo Alternativo** (Error):
+- Si request inválido → 422 Unprocessable Entity
+- Si análisis falla → 500 Internal Server Error con detalles
+
+**Resultado Esperado**: Response JSON con `HiveMindResponseModel`
+
+#### CU-3: Ejecutar Análisis con Streaming (WebSocket)
+
+**Actor**: Usuario Final (Frontend)
+**Precondiciones**: Frontend conectado a API
+
+**Flujo Principal**:
+1. Frontend establece conexión WebSocket a `/api/v1/ws/analyze`
+2. Frontend envía `{"action": "start", "business_need": "...", ...}`
+3. API ejecuta análisis en background
+4. API emite mensajes de progreso:
+   - `{"type": "progress", "phase": "workers", "agent": "ProductManager", ...}`
+   - `{"type": "progress", "phase": "coordinator", ...}`
+   - `{"type": "progress", "phase": "supervisor", ...}`
+5. Frontend actualiza UI en tiempo real
+6. API emite `{"type": "complete", "result": {...}}`
+7. Frontend muestra resultado final
+
+**Resultado Esperado**: UI actualizada en tiempo real con progreso y resultado final
+
+#### CU-4: Consultar Historial de Análisis
+
+**Actor**: Usuario Final
+**Precondiciones**: Análisis previos guardados en BD
+
+**Flujo Principal**:
+1. Usuario accede a `/history` (Frontend) o `GET /api/v1/history` (API)
+2. Sistema consulta PostgreSQL
+3. Sistema retorna lista de análisis con metadata
+4. Usuario puede filtrar por metodología, fecha, etc.
+5. Usuario puede ver detalles de análisis específico
+
+**Resultado Esperado**: Lista de análisis históricos con filtros y detalles
+
+#### CU-5: Exportar Resultados
+
+**Actor**: Usuario Final
+**Precondiciones**: Análisis completado
+
+**Flujo Principal**:
+1. Usuario selecciona análisis
+2. Usuario hace clic en "Exportar PDF" o "Descargar JSON"
+3. Sistema genera formato solicitado
+4. Sistema proporciona archivo descargable
+
+**Resultado Esperado**: Archivo descargable (PDF o JSON)
+
+### 5.3 Diagrama de Casos de Uso
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     ACTORES                                  │
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │    Usuario   │  │   Frontend   │  │  CLI Tool    │     │
+│  │    Final     │  │   (React)    │  │  (Python)    │     │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
+│         │                 │                  │             │
+│         └─────────────────┼──────────────────┘             │
+│                           │                                │
+│                           ▼                                │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │               SISTEMA HIVEMIND                      │   │
+│  │                                                     │   │
+│  │  ┌──────────────┐  ┌──────────────┐               │   │
+│  │  │  REST API    │  │  WebSocket   │               │   │
+│  │  │  (FastAPI)   │  │  Endpoint    │               │   │
+│  │  └──────────────┘  └──────────────┘               │   │
+│  │         │                  │                        │   │
+│  │         └────────┬─────────┘                        │   │
+│  │                  │                                  │   │
+│  │                  ▼                                  │   │
+│  │  ┌─────────────────────────────────────┐           │   │
+│  │  │   HiveMindArchitecture              │           │   │
+│  │  │   • Orquestación                    │           │   │
+│  │  │   • Gestión de agentes              │           │   │
+│  │  │   • Comunicación                    │           │   │
+│  │  └─────────────────────────────────────┘           │   │
+│  │                  │                                  │   │
+│  │         ┌────────┴────────┐                        │   │
+│  │         │                 │                        │   │
+│  │         ▼                 ▼                        │   │
+│  │  ┌──────────┐    ┌──────────────┐                 │   │
+│  │  │ Agentes  │    │ Persistence  │                 │   │
+│  │  │ (3 Niv.) │    │  Service     │                 │   │
+│  │  └──────────┘    └──────────────┘                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                │
+│         ┌─────────────────┼─────────────────┐             │
+│         │                 │                 │             │
+│         ▼                 ▼                 ▼             │
+│  ┌──────────┐    ┌──────────────┐  ┌──────────────┐     │
+│  │ Gemini   │    │ PostgreSQL   │  │ File System  │     │
+│  │ API      │    │  Database    │  │  Storage     │     │
+│  └──────────┘    └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Consensus Mechanisms
+## Patrones Arquitectónicos
 
-### Weighted Voting Consensus (Default)
+### Patrón HiveMind
+
+El **patrón HiveMind** es una arquitectura multi-agente donde:
+- Múltiples agentes especializados trabajan independientemente
+- Cada agente aporta una perspectiva única
+- Una capa de coordinación sintetiza los outputs
+- Una capa de supervisión toma decisiones finales
+
+**Características Clave**:
+- **Procesamiento Paralelo** (a nivel de workers, pero secuencial por dependencias)
+- **Diversidad de Pensamiento**: Cada agente aporta expertise único
+- **Consenso Jerárquico**: Decisión multi-nivel
+- **Comunicación Transparente**: Todas las interacciones trazables vía A2A
+
+### Patrón de Flujo Jerárquico
+
+El sistema implementa un **flujo jerárquico** siguiendo mejores prácticas de Product Management:
+
+**Orden de Ejecución**:
+1. Business Foundation (ProductManager) - Sin dependencias
+2. Product Definition (ProductOwner) - Depende de #1
+3. User Experience (UXUI) - Depende de #2
+4. Technical Foundation (TechnicalLead) - Depende de #3
+5. Process Optimization (ScrumMaster) - Depende de #4
+6. Quality Assurance (QA) - Depende de #5
+
+**Quality Gates**:
+- Cada fase valida sus dependencias
+- Cada fase valida completitud de contexto
+- Cada fase genera confidence score
+- Sistema valida metodología compliance
+
+### Patrón de Preservación de Contexto
+
+El sistema mantiene **contexto completo** en cada nivel:
+
+**Mecanismos**:
+- Message History: Todas las comunicaciones A2A logueadas
+- Parent-Child Relationships: Mensajes vinculados para trazabilidad
+- Metadata Preservation: Cada mensaje lleva forward todo el contexto relevante
+- Methodology Context: Información metodológica propagada en todos los niveles
+
+### Patrón de Consenso Distribuido
+
+El sistema implementa **consenso distribuido**:
+
+**Estrategias**:
+- **Weighted Voting**: Votación ponderada por expertise
+- **Majority**: Mayoría simple
+- **Unanimous**: Unanimidad requerida
+- **Confidence Threshold**: Umbral de confianza promedio
+
+**Aplicación**:
+- ConsensusManager aplica estrategia seleccionada
+- Coordinator genera síntesis basada en consenso
+- Supervisor valida consenso antes de decisión final
+
+---
+
+## Componentes del Sistema
+
+### Capa de Agentes
+
+**BaseAgent (Abstract)**:
+- Interfaz común para todos los agentes
+- Gestiona comunicación con Gemini API
+- Proporciona logging y manejo de errores
+- Adapta prompts según metodología
+
+**Worker Agents** (6 especialistas):
+- ProductManagerAgent: Business analysis, KPIs, stakeholders
+- ProductOwnerAgent: User stories, backlog, INVEST criteria
+- UXUIAgent: Journey maps, wireframes, design system
+- TechnicalLeadAgent: C4 architecture, tech stack, NFRs
+- ScrumMasterAgent: Ceremonies, RAID, Definition of Ready
+- QASpecialistAgent: Test strategy, coverage, automation
+
+**CoordinatorAgent**:
+- Sintetiza outputs de workers
+- Resuelve conflictos
+- Aplica consenso
+- Genera vista integrada
+
+**SupervisorAgent**:
+- Evalúa síntesis
+- Valida completitud
+- Toma decisiones finales
+- Genera documento final
+
+### Capa de Servicios
+
+**CommunicationBus**:
+- Routing de mensajes
+- Historial de mensajes
+- Analytics y logging
+- Soporte A2A protocol
+
+**ConsensusManager**:
+- Aplica estrategias de consenso
+- Evalúa acuerdo entre agentes
+- Maneja desacuerdos
+
+**MethodologyFactory**:
+- Crea contextos metodológicos
+- Mapea roles y artefactos
+- Proporciona adaptación
+
+**HierarchicalExecutionFlow**:
+- Gestiona ejecución secuencial
+- Valida dependencias
+- Preserva contexto
+
+### Capa de Infraestructura
+
+**GeminiClient**:
+- Wrapper para Gemini API
+- Rate limiting y retry
+- Gestión de tokens
+
+**Database (PostgreSQL)**:
+- Persistencia de análisis
+- Historial de ejecuciones
+- Trazabilidad completa
+
+**PersistenceService**:
+- Abstracción para BD
+- CRUD operations
+- Queries y filtros
+
+---
+
+## Mecanismos de Consenso
+
+### Weighted Voting (Por Defecto)
+
+Cada agente tiene un peso basado en su expertise:
 
 ```python
-# Each agent has a weight based on expertise
 weights = {
-    "ProductManager": 1.2,  # High weight for business decisions
+    "ProductManager": 1.2,  # Alto peso para decisiones de negocio
     "ProductOwner": 1.1,
     "UXUI_Designer": 1.0,
     "ScrumMaster": 0.9,
-    "TechnicalLead": 1.3,   # High weight for technical decisions
+    "TechnicalLead": 1.3,   # Alto peso para decisiones técnicas
     "QA_Specialist": 1.0
 }
 
-# Consensus = weighted average of confidence scores
 consensus = Σ(confidence_i × weight_i) / Σ(weight_i)
 ```
 
-**Use Case**: General purpose, balances all perspectives with emphasis on key roles.
-
 ### Majority Consensus
 
+Cuenta agentes con confidence > threshold:
 ```python
-# Count agents with confidence > threshold
 agreeing = [agent for agent in agents if agent.confidence >= 0.6]
 consensus_achieved = len(agreeing) / len(agents) > 0.5
 ```
 
-**Use Case**: When quick agreement is needed, less emphasis on expertise differences.
-
 ### Confidence Threshold Consensus
 
+Confianza promedio debe exceder umbral:
 ```python
-# Average confidence must exceed threshold
 avg_confidence = mean([agent.confidence for agent in agents])
 consensus_achieved = avg_confidence >= 0.75
 ```
 
-**Use Case**: Ensuring high overall confidence before proceeding.
-
 ---
 
-## Communication Protocol
+## Protocolo de Comunicación A2A
 
-### A2A Message Structure
+### Estructura de Mensaje A2A
 
 ```json
 {
@@ -1061,168 +1153,142 @@ consensus_achieved = avg_confidence >= 0.75
 }
 ```
 
-### Communication Patterns
+### Tipos de Mensaje
 
-1. **Request-Response**: System requests, agent responds
-2. **Broadcast**: Supervisor broadcasts to all workers
-3. **Point-to-Point**: Direct agent-to-agent communication
-4. **Hierarchical**: Workers → Coordinator → Supervisor
+- **REQUEST**: Solicitud de acción
+- **RESPONSE**: Respuesta a solicitud
+- **NOTIFICATION**: Notificación (sin respuesta esperada)
+- **ERROR**: Mensaje de error
 
----
+### Niveles de Prioridad
 
-## Design Decisions
-
-### Why Support Multiple Agile Methodologies?
-
-**Problem**: Different organizations use different Agile methodologies (Scrum, SAFe, Kanban) with distinct roles, artifacts, and processes.
-
-**Solution**: Implement methodology-aware architecture that adapts behavior, roles, and outputs.
-
-**Benefits**:
-- ✓ Flexibility to work with any Agile methodology
-- ✓ Consistent terminology and artifacts per methodology
-- ✓ Proper role mapping and responsibilities
-- ✓ Methodology-specific output formats
-
-### Why Methodology Factory Pattern?
-
-**Problem**: Need to manage different methodology configurations without hardcoding.
-
-**Solution**: Factory pattern with MethodologyContext and MethodologyAdapter.
-
-**Benefits**:
-- ✓ Easy to add new methodologies
-- ✓ Centralized methodology configuration
-- ✓ Consistent adaptation across all agents
-- ✓ Maintainable and extensible design
-
-### Why Adapt Prompts Dynamically?
-
-**Problem**: Agent prompts need to reflect methodology-specific roles and context.
-
-**Solution**: MethodologyAdapter enhances base prompts with methodology context.
-
-**Benefits**:
-- ✓ Agents understand their methodology-specific role
-- ✓ Consistent terminology across all agents
-- ✓ Methodology-specific artifacts and ceremonies
-- ✓ Better alignment with organizational practices
-
-### Why Three Levels?
-
-**Level 1 (Workers)**: Ensures diverse, specialized perspectives
-**Level 2 (Coordinator)**: Synthesizes without losing nuance
-**Level 3 (Supervisor)**: Provides authoritative, final decision
-
-**Rationale**: More levels would add complexity without value; fewer levels would lose synthesis benefits.
-
-### Why Parallel Worker Processing?
-
-- **Faster**: All workers analyze simultaneously
-- **Independent**: No bias from seeing others' work
-- **Scalable**: Easy to add more workers
-
-### Why Hierarchical vs. Flat Consensus?
-
-**Flat** (all agents vote equally):
-- ✗ No synthesis of different perspectives
-- ✗ No conflict resolution mechanism
-- ✗ Binary yes/no decisions
-
-**Hierarchical** (our approach):
-- ✓ Coordinator synthesizes and integrates
-- ✓ Conflicts resolved explicitly
-- ✓ Nuanced, comprehensive output
-
-### Why JSON Output Format?
-
-- Structured, parseable
-- Easy to validate
-- Language-agnostic
-- Can be transformed to other formats (Markdown, PDF, etc.)
-
-### Technology Choices
-
-**Google Gemini**:
-- Advanced language understanding
-- Large context window (good for long requirements)
-- Cost-effective
-
-**Pydantic**:
-- Runtime type validation
-- Clear data structures
-- Excellent error messages
-
-**Rich**:
-- Beautiful terminal UI
-- Progress indicators
-- Professional appearance
+- **HIGH**: Mensajes críticos (coordinator, supervisor)
+- **MEDIUM**: Mensajes normales (workers)
+- **LOW**: Mensajes informativos
 
 ---
 
-## Scalability Considerations
+## Decisiones de Diseño
 
-### Horizontal Scaling
+### Por qué Soporte Multi-Metodología?
 
-- Add more worker agents for new perspectives
-- Partition workers by domain (frontend, backend, data, etc.)
-- Parallelize worker execution across multiple machines
+**Problema**: Organizaciones usan diferentes metodologías (Scrum, SAFe, Kanban) con roles, artefactos y procesos distintos.
 
-### Vertical Scaling
+**Solución**: Arquitectura methodology-aware que adapta comportamiento, roles y outputs.
 
-- Use more capable models (e.g., Gemini Pro → Ultra)
-- Increase context windows for larger projects
-- Add caching for repeated analyses
+**Beneficios**:
+- Flexibilidad para trabajar con cualquier metodología
+- Terminología y artefactos consistentes por metodología
+- Mapeo apropiado de roles y responsabilidades
+- Formatos de output específicos por metodología
 
-### Performance Optimizations
+### Por qué Flujo Jerárquico?
 
-- Cache worker responses for similar needs
-- Batch API calls when possible
-- Stream responses for faster feedback
+**Problema**: Ejecución paralela de workers sin considerar dependencias y orden lógico.
+
+**Solución**: Ejecución secuencial siguiendo mejores prácticas de Product Management.
+
+**Beneficios**:
+- Dependencias explícitas entre fases
+- Contexto preservado entre fases
+- Quality gates en cada fase
+- Alineación con procesos reales de desarrollo
+
+### Por qué Tres Niveles?
+
+**Nivel 1 (Workers)**: Asegura perspectivas diversas y especializadas
+**Nivel 2 (Coordinator)**: Sintetiza sin perder matices
+**Nivel 3 (Supervisor)**: Proporciona decisión autoritativa y final
+
+**Racional**: Más niveles añadirían complejidad sin valor; menos niveles perderían beneficios de síntesis.
+
+### Por qué API REST + WebSocket?
+
+**REST API**: Para integraciones síncronas y consultas
+**WebSocket**: Para streaming en tiempo real y actualizaciones incrementales
+
+**Beneficios**:
+- Flexibilidad para diferentes casos de uso
+- Mejor UX con actualizaciones en tiempo real
+- Compatibilidad con múltiples clientes
+
+### Por qué PostgreSQL?
+
+**Racional**:
+- Datos estructurados (análisis, respuestas)
+- Relaciones entre entidades (análisis → agent_responses)
+- Consultas complejas (historial, filtros)
+- ACID compliance para integridad
 
 ---
 
-## Security & Privacy
+## Consideraciones de Escalabilidad
 
-### Data Protection
-- API keys stored in environment variables
-- No hardcoded credentials
-- Sensitive data not logged
+### Escalado Horizontal
 
-### API Security
-- Rate limiting handled by Gemini SDK
-- Retry logic with exponential backoff
-- Error handling prevents data leaks
+- Añadir más worker agents para nuevas perspectivas
+- Particionar workers por dominio
+- Paralelizar ejecución de workers en múltiples máquinas
 
----
+### Escalado Vertical
 
-## Future Extensions
+- Usar modelos más capaces (Gemini Pro → Ultra)
+- Aumentar context windows para proyectos grandes
+- Añadir caching para análisis repetidos
 
-### Potential Enhancements
-1. **Additional Methodologies**: LeSS, Nexus, DAD, Crystal
-2. **Methodology Validation**: Ensure outputs align with methodology best practices
-3. **Custom Methodology Support**: Allow users to define their own methodology
-4. **Methodology Templates**: Pre-built templates for common organizational patterns
-5. **Iterative Refinement**: Multiple rounds of consensus
-6. **Human-in-the-Loop**: Manual review checkpoints
-7. **Learning System**: Improve from past requirements
-8. **Multi-Language**: Support non-English inputs
-9. **Visual Diagrams**: Auto-generate architecture diagrams
-10. **Cost Optimization**: Model selection based on budget
-11. **Methodology Analytics**: Track effectiveness of different methodologies
-12. **Hybrid Methodologies**: Support combinations of methodologies
+### Optimizaciones de Performance
+
+- Cache de respuestas de workers para necesidades similares
+- Batch API calls cuando sea posible
+- Stream responses para feedback más rápido
 
 ---
 
-## Conclusion
+## Seguridad y Privacidad
 
-The HiveMind architecture provides a robust, scalable approach to transforming business needs into technical requirements through specialized agent collaboration and hierarchical consensus. The system now supports multiple Agile methodologies (Scrum, SAFe, Kanban) with automatic adaptation of roles, artifacts, and outputs.
+### Protección de Datos
 
-**Key Benefits:**
-- Comprehensive analysis from multiple perspectives
-- Structured, actionable output adapted to chosen methodology
-- Transparent decision-making process
-- Scalable and extensible design
-- Methodology-aware agent behavior
-- Flexible methodology selection and adaptation
-- Consistent terminology and artifacts per methodology
+- API keys almacenadas en variables de entorno
+- No hay credenciales hardcodeadas
+- Datos sensibles no logueados
+
+### Seguridad de API
+
+- Rate limiting manejado por Gemini SDK
+- Retry logic con exponential backoff
+- Error handling previene data leaks
+
+---
+
+## Extensiones Futuras
+
+### Potenciales Mejoras
+
+1. **Metodologías Adicionales**: LeSS, Nexus, DAD, Crystal
+2. **Validación Metodológica**: Asegurar outputs alineados con mejores prácticas
+3. **Soporte Metodología Custom**: Permitir a usuarios definir su propia metodología
+4. **Plantillas Metodológicas**: Templates pre-construidos
+5. **Refinamiento Iterativo**: Múltiples rondas de consenso
+6. **Human-in-the-Loop**: Checkpoints de revisión manual
+7. **Sistema de Aprendizaje**: Mejorar desde requisitos pasados
+8. **Multi-idioma**: Soporte para inputs no-inglés
+9. **Diagramas Visuales**: Auto-generar diagramas de arquitectura
+10. **Optimización de Costos**: Selección de modelo basada en presupuesto
+
+---
+
+## Conclusión
+
+La arquitectura HiveMind proporciona un enfoque robusto y escalable para transformar necesidades de negocio en requisitos técnicos a través de colaboración de agentes especializados y consenso jerárquico. El sistema soporta múltiples metodologías ágiles (Scrum, SAFe, Kanban) con adaptación automática de roles, artefactos y outputs.
+
+**Beneficios Clave**:
+- Análisis comprehensivo desde múltiples perspectivas
+- Output estructurado adaptado a metodología elegida
+- Proceso de decisión transparente
+- Diseño escalable y extensible
+- Comportamiento de agentes methodology-aware
+- Selección y adaptación flexible de metodologías
+- Terminología y artefactos consistentes por metodología
+
+**Audiencia Objetivo**:
+Este documento está diseñado para servir como material de referencia académico para el aprendizaje de arquitecturas multi-agente AI, proporcionando una descripción completa y estructurada siguiendo el modelo de vistas arquitectónicas 4+1.

@@ -18,13 +18,16 @@ show_help() {
     echo ""
     echo "Comandos disponibles:"
     echo "  build          Construir las imágenes Docker"
-    echo "  up             Iniciar servicios (API REST)"
+    echo "  up             Iniciar servicios (API REST + Frontend)"
+    echo "  up-api         Iniciar solo API REST"
+    echo "  up-frontend    Iniciar solo Frontend"
     echo "  up-dev         Iniciar servicios en modo desarrollo"
     echo "  up-cli         Iniciar servicio CLI"
     echo "  up-test        Ejecutar pruebas automatizadas"
     echo "  down           Detener todos los servicios"
     echo "  logs           Mostrar logs de todos los servicios"
     echo "  logs-api       Mostrar logs del servicio API"
+    echo "  logs-frontend  Mostrar logs del servicio Frontend"
     echo "  shell          Abrir shell en el contenedor API"
     echo "  test           Ejecutar pruebas de la API"
     echo "  clean          Limpiar contenedores e imágenes"
@@ -32,7 +35,9 @@ show_help() {
     echo "  health         Verificar salud de los servicios"
     echo ""
     echo "Ejemplos:"
-    echo "  $0 up          # Iniciar API REST en puerto 8000"
+    echo "  $0 up          # Iniciar API REST + Frontend"
+    echo "  $0 up-api      # Solo API REST en puerto 8002"
+    echo "  $0 up-frontend # Solo Frontend en puerto 3002"
     echo "  $0 up-dev      # Iniciar en modo desarrollo con hot-reload"
     echo "  $0 test        # Ejecutar pruebas automatizadas"
     echo "  $0 shell       # Abrir shell para debugging"
@@ -40,19 +45,19 @@ show_help() {
 
 # Función para verificar si existe el archivo .env
 check_env() {
-    if [ ! -f ".env" ]; then
-        echo -e "${YELLOW}⚠️  Archivo .env no encontrado${NC}"
-        echo -e "${YELLOW}   Copiando env.example a .env...${NC}"
-        cp env.example .env
-        echo -e "${RED}❌ IMPORTANTE: Edita el archivo .env y configura tu GOOGLE_API_KEY${NC}"
-        echo -e "${RED}   Antes de continuar, ejecuta: nano .env${NC}"
+    if [ ! -f "backend/.env" ]; then
+        echo -e "${YELLOW}⚠️  Archivo .env no encontrado en backend/${NC}"
+        echo -e "${YELLOW}   Copiando backend/env.example a backend/.env...${NC}"
+        cp backend/env.example backend/.env
+        echo -e "${RED}❌ IMPORTANTE: Edita el archivo backend/.env y configura tu GOOGLE_API_KEY${NC}"
+        echo -e "${RED}   Antes de continuar, ejecuta: nano backend/.env${NC}"
         exit 1
     fi
     
     # Verificar que GOOGLE_API_KEY esté configurado
-    if grep -q "your_gemini_api_key_here" .env; then
-        echo -e "${RED}❌ ERROR: GOOGLE_API_KEY no está configurado en .env${NC}"
-        echo -e "${RED}   Edita el archivo .env y configura tu API key de Gemini${NC}"
+    if grep -q "your_gemini_api_key_here" backend/.env; then
+        echo -e "${RED}❌ ERROR: GOOGLE_API_KEY no está configurado en backend/.env${NC}"
+        echo -e "${RED}   Edita el archivo backend/.env y configura tu API key de Gemini${NC}"
         exit 1
     fi
 }
@@ -77,8 +82,9 @@ start_services() {
     
     echo -e "${GREEN}✅ Servicios iniciados${NC}"
     echo -e "${BLUE}📖 API REST disponible en: http://localhost:8002${NC}"
-    echo -e "${BLUE}📚 Documentación: http://localhost:8002/docs${NC}"
-    echo -e "${BLUE}❤️  Health check: http://localhost:8002/api/v1/health${NC}"
+    echo -e "${BLUE}🌐 Frontend Web disponible en: http://localhost:3002${NC}"
+    echo -e "${BLUE}📚 Documentación API: http://localhost:8002/docs${NC}"
+    echo -e "${BLUE}❤️  Health check API: http://localhost:8002/api/v1/health${NC}"
 }
 
 # Función para detener servicios
@@ -131,9 +137,8 @@ show_status() {
 check_health() {
     echo -e "${BLUE}❤️  Verificando salud de los servicios...${NC}"
     
-    # Verificar si el servicio está corriendo
+    # Verificar API REST
     if docker-compose ps | grep -q "hivemind-api.*Up"; then
-        # Verificar health check
         if curl -f http://localhost:8002/api/v1/health > /dev/null 2>&1; then
             echo -e "${GREEN}✅ API REST está funcionando correctamente${NC}"
         else
@@ -141,6 +146,17 @@ check_health() {
         fi
     else
         echo -e "${RED}❌ Servicio API no está corriendo${NC}"
+    fi
+    
+    # Verificar Frontend
+    if docker-compose ps | grep -q "hivemind-frontend.*Up"; then
+        if curl -f http://localhost:3002/ > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ Frontend Web está funcionando correctamente${NC}"
+        else
+            echo -e "${RED}❌ Frontend Web no responde correctamente${NC}"
+        fi
+    else
+        echo -e "${RED}❌ Servicio Frontend no está corriendo${NC}"
     fi
 }
 
@@ -173,6 +189,17 @@ case "${1:-help}" in
         check_env
         start_services
         ;;
+    "up-api")
+        check_env
+        docker-compose up -d hivemind-api
+        echo -e "${GREEN}✅ API REST iniciada${NC}"
+        echo -e "${BLUE}📖 API REST disponible en: http://localhost:8002${NC}"
+        ;;
+    "up-frontend")
+        docker-compose up -d hivemind-frontend
+        echo -e "${GREEN}✅ Frontend iniciado${NC}"
+        echo -e "${BLUE}🌐 Frontend Web disponible en: http://localhost:3002${NC}"
+        ;;
     "up-dev")
         check_env
         start_services "dev"
@@ -193,6 +220,9 @@ case "${1:-help}" in
         ;;
     "logs-api")
         show_logs "hivemind-api"
+        ;;
+    "logs-frontend")
+        show_logs "hivemind-frontend"
         ;;
     "shell")
         open_shell

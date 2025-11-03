@@ -2,11 +2,13 @@
 
 import logging
 import traceback
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+import asyncio
 
 import sys
 import os
@@ -17,6 +19,8 @@ from hivemind.methodology import MethodologyFactory
 from hivemind.consensus import ConsensusStrategy
 from utils.config import Config
 from utils.gemini_client import GeminiClient
+from db.database import get_db
+from db.persistence import PersistenceService
 
 from .models import (
     BusinessNeedRequest,
@@ -143,7 +147,8 @@ async def system_info():
 async def analyze_business_need(
     request: BusinessNeedRequest,
     config: Config = Depends(get_config),
-    gemini_client: GeminiClient = Depends(get_gemini_client)
+    gemini_client: GeminiClient = Depends(get_gemini_client),
+    db: Session = Depends(get_db)
 ):
     """
     Endpoint principal para analizar necesidades de negocio usando HiveMind
@@ -167,6 +172,21 @@ async def analyze_business_need(
             business_need=request.business_need,
             verbose=request.verbose
         )
+        
+        # Guardar análisis en base de datos
+        persistence = PersistenceService(db)
+        saved_analysis = persistence.save_analysis(
+            business_need=request.business_need,
+            methodology=request.methodology.value,
+            consensus_strategy=request.consensus_strategy.value,
+            result=result,
+            success=True
+        )
+        
+        if saved_analysis:
+            logger.info(f"Analysis saved with ID: {saved_analysis.id}")
+        else:
+            logger.warning("Failed to save analysis to database")
         
         # Convertir resultado a modelo de respuesta
         response = HiveMindResponseModel(
@@ -207,7 +227,10 @@ async def analyze_business_need(
                 "content": result.supervisor_response.content,
                 "content_length": len(result.supervisor_response.content)
             },
-            metadata=result.metadata
+            metadata={
+                **result.metadata,
+                "analysis_id": saved_analysis.id if saved_analysis else None
+            }
         )
         
         logger.info(f"HiveMind analysis completed successfully in {result.execution_time:.2f}s")
@@ -297,6 +320,71 @@ async def get_consensus_strategies():
         raise HTTPException(status_code=500, detail=f"Error getting consensus strategies: {str(e)}")
 
 
+# -----------------------------
+# History Endpoints
+# -----------------------------
+
+logger.info("📝 Registering history endpoints...")
+
+@router.get("/history")
+async def get_analysis_history(
+    limit: int = Query(50, ge=1, le=100, description="Número máximo de análisis a retornar"),
+    offset: int = Query(0, ge=0, description="Número de análisis a saltar"),
+    methodology: Optional[str] = Query(None, description="Filtrar por metodología"),
+    success_only: bool = Query(False, description="Solo análisis exitosos"),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener historial de análisis ejecutados
+    """
+    logger.info("🔍 History endpoint called")
+    try:
+        persistence = PersistenceService(db)
+        analyses = persistence.list_analyses(
+            limit=limit,
+            offset=offset,
+            methodology=methodology,
+            success_only=success_only
+        )
+        
+        return {
+            "success": True,
+            "count": len(analyses),
+            "limit": limit,
+            "offset": offset,
+            "analyses": [analysis.to_dict() for analysis in analyses]
+        }
+    except Exception as e:
+        logger.error(f"Error retrieving analysis history: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
+
+
+@router.get("/history/{analysis_id}")
+async def get_analysis_by_id(
+    analysis_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener un análisis específico por ID
+    """
+    try:
+        persistence = PersistenceService(db)
+        analysis = persistence.get_analysis(analysis_id)
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found")
+        
+        return {
+            "success": True,
+            "analysis": analysis.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving analysis {analysis_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving analysis: {str(e)}")
+
+
 # Endpoint de ejemplo
 @router.post("/example")
 async def example_analysis():
@@ -310,10 +398,193 @@ async def example_analysis():
             consensus_strategy=ConsensusStrategyEnum.WEIGHTED_VOTING,
             verbose=True
         )
-        
-        # Usar el endpoint principal
-        return await analyze_business_need(example_request)
+        # Resolver dependencias explícitamente (evitar pasar objetos Depends)
+        config = get_config()
+        gemini_client = get_gemini_client(config)
+        # Reutilizar la lógica del endpoint principal inyectando deps resueltas
+        return await analyze_business_need(example_request, config=config, gemini_client=gemini_client)
         
     except Exception as e:
         logger.error(f"Example analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error in example analysis: {str(e)}")
+
+
+# -----------------------------
+# WebSocket: análisis en tiempo real
+# -----------------------------
+
+@router.websocket("/ws/analyze")
+async def analyze_business_need_ws(websocket: WebSocket):
+    """
+    WebSocket para ejecutar el análisis y emitir progreso incremental.
+    """
+    logger.info(f"🔌 WebSocket connection attempt from {websocket.client.host}")
+    db = None
+    db_gen = None
+    
+    try:
+        await websocket.accept()
+        logger.info(f"✅ WebSocket accepted from {websocket.client.host}")
+        await websocket.send_json({"type": "connected"})
+        
+        # Get database session for this WebSocket connection
+        db_gen = get_db()
+        db = next(db_gen)
+    except Exception as e:
+        logger.error(f"❌ WebSocket accept failed: {str(e)}")
+        return
+    
+    try:
+        payload = await websocket.receive_json()
+        logger.info(f"📨 Received payload: {payload.get('action', 'unknown')}")
+        
+        if not isinstance(payload, dict) or payload.get("action") != "start":
+            await websocket.send_json({"type": "error", "message": "Invalid start payload"})
+            await websocket.close()
+            return
+
+        # Resolver dependencias
+        config = get_config()
+        gemini_client = get_gemini_client(config)
+
+        # Parseo de parámetros
+        try:
+            meth = payload.get("methodology", MethodologyEnum.SCRUM)
+            cons = payload.get("consensus_strategy", ConsensusStrategyEnum.WEIGHTED_VOTING)
+            methodology = convert_methodology_enum(meth)
+            consensus_strategy = convert_consensus_strategy_enum(cons)
+        except Exception:
+            await websocket.send_json({"type": "error", "message": "Invalid methodology or consensus_strategy"})
+            await websocket.close()
+            return
+
+        business_need = (payload.get("business_need") or "").strip()
+        verbose = bool(payload.get("verbose", True))
+        if not business_need:
+            await websocket.send_json({"type": "error", "message": "business_need is required"})
+            await websocket.close()
+            return
+
+        # Inicializar arquitectura
+        architecture = HiveMindArchitecture(
+            gemini_client=gemini_client,
+            methodology=methodology,
+            consensus_strategy=consensus_strategy
+        )
+
+        # Ejecutar en executor y streamear mensajes del CommunicationBus
+        last_index = 0
+        loop = asyncio.get_running_loop()
+
+        def run_execute():
+            return architecture.execute(business_need=business_need, verbose=verbose)
+
+        exec_task = loop.run_in_executor(None, run_execute)
+
+        # Polling del bus mientras corre la ejecución
+        try:
+            while True:
+                done = exec_task.done()
+                try:
+                    history = architecture.communication_bus.get_message_history()
+                except Exception:
+                    history = []
+
+                for msg in history[last_index:]:
+                    # msg puede ser objeto con to_dict
+                    try:
+                        data = msg.to_dict() if hasattr(msg, "to_dict") else (msg if isinstance(msg, dict) else getattr(msg, "__dict__", {}))
+                    except Exception:
+                        data = {}
+                    await websocket.send_json({"type": "agent_update", "data": data})
+                last_index = len(history)
+
+                if done:
+                    break
+                await asyncio.sleep(0.5)
+
+            # Obtener resultado final
+            result = await exec_task
+            final_payload = {
+                "success": True,
+                "execution_time": result.execution_time,
+                "methodology": payload.get("methodology", MethodologyEnum.SCRUM.value),
+                "consensus_result": {
+                    "consensus_level": result.consensus_result.consensus_level,
+                    "achieved": result.consensus_result.achieved,
+                    "strategy_used": result.consensus_result.strategy_used.value,
+                    "justification": result.consensus_result.justification,
+                    "metadata": result.consensus_result.metadata,
+                },
+                "worker_responses": [
+                    {
+                        "agent_name": r.agent_name,
+                        "confidence": r.confidence,
+                        "timestamp": r.timestamp,
+                        "methodology": r.methodology,
+                        "content": r.content,
+                        "content_length": len(r.content),
+                    }
+                    for r in result.worker_responses
+                ],
+                "coordinator_response": {
+                    "agent_name": result.coordinator_response.agent_name,
+                    "confidence": result.coordinator_response.confidence,
+                    "timestamp": result.coordinator_response.timestamp,
+                    "methodology": result.coordinator_response.methodology,
+                    "content": result.coordinator_response.content,
+                    "content_length": len(result.coordinator_response.content),
+                },
+                "supervisor_response": {
+                    "agent_name": result.supervisor_response.agent_name,
+                    "confidence": result.supervisor_response.confidence,
+                    "timestamp": result.supervisor_response.timestamp,
+                    "methodology": result.supervisor_response.methodology,
+                    "content": result.supervisor_response.content,
+                    "content_length": len(result.supervisor_response.content),
+                },
+                "metadata": result.metadata,
+            }
+            await websocket.send_json({"type": "final", "data": final_payload})
+            
+            # Guardar análisis en base de datos si fue exitoso
+            if result.success and db:
+                try:
+                    persistence = PersistenceService(db)
+                    saved_analysis = persistence.save_analysis(
+                        business_need=business_need,
+                        methodology=methodology.value,
+                        consensus_strategy=consensus_strategy.value,
+                        result=result,
+                        success=True
+                    )
+                    if saved_analysis:
+                        logger.info(f"Analysis saved with ID: {saved_analysis.id}")
+                        # Update final payload with analysis_id
+                        final_payload["metadata"] = final_payload.get("metadata", {})
+                        final_payload["metadata"]["analysis_id"] = saved_analysis.id
+                        await websocket.send_json({"type": "final", "data": final_payload})
+                except Exception as e:
+                    logger.warning(f"Failed to save analysis to database: {str(e)}")
+            
+            await websocket.close()
+            
+        except WebSocketDisconnect:
+            logger.info("WebSocket client disconnected")
+        except Exception as e:
+            logger.error(f"WS analyze error: {e}")
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close()
+    except Exception as e:
+        logger.error(f"WebSocket endpoint error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close()
+        except:
+            pass
+    finally:
+        if db_gen:
+            try:
+                db_gen.close()
+            except:
+                pass

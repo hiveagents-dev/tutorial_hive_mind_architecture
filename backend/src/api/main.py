@@ -47,6 +47,11 @@ async def lifespan(app: FastAPI):
         )
         logger.info("✅ Gemini client initialized")
         
+        # Initialize database
+        from db.database import init_db
+        init_db()
+        logger.info("✅ Database initialized")
+        
         logger.info("🎉 HiveMind API Server ready!")
         
     except Exception as e:
@@ -114,20 +119,25 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# Configurar CORS
+# Configurar CORS (incluye soporte para WebSockets)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # En producción, especificar dominios específicos
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
-# Middleware para logging de requests
+# Middleware para logging de requests (excluye WebSockets completamente)
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Middleware para logging de requests"""
+    """Middleware para logging de requests HTTP (no WebSockets)"""
+    # Ignorar WebSockets completamente - no procesar en absoluto
+    if request.url.path.startswith("/api/v1/ws"):
+        return await call_next(request)
+    
     start_time = time.time()
     
     # Log del request
