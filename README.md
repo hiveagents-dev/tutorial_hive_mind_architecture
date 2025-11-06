@@ -372,7 +372,20 @@ Standardized message format for inter-agent communication:
 
 ## Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Deep dive into system design
+### Architecture Documentation (4+1 Views)
+
+Comprehensive architectural documentation following Philippe Kruchten's 4+1 view model:
+
+- **[Overview](docs/architecture/overview.md)**: Introduction to the 4+1 architecture views
+- **[Logical View](docs/architecture/logical-view.md)**: Components, responsibilities, and relationships
+- **[Process View](docs/architecture/process-view.md)**: Runtime behavior, workflows, and communication
+- **[Development View](docs/architecture/development-view.md)**: Code organization, modules, and build system
+- **[Physical View](docs/architecture/physical-view.md)**: Deployment, infrastructure, and scaling
+- **[Scenarios (+1)](docs/architecture/scenarios.md)**: Use cases, workflows, and user interactions
+
+### Additional Documentation
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Original comprehensive architecture document
 - **[API_REFERENCE.md](docs/API_REFERENCE.md)**: Complete API documentation
 - **[TUTORIAL.md](docs/TUTORIAL.md)**: Guide to extending the system
 
