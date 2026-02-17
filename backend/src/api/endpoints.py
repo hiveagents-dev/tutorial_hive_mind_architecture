@@ -35,6 +35,9 @@ from .models import (
     ConsensusStrategyEnum
 )
 
+# AgentDB cognitive memory
+from agentdb import AgentDB, AgentDBConfig
+
 logger = logging.getLogger(__name__)
 
 # Router principal
@@ -407,6 +410,204 @@ async def example_analysis():
     except Exception as e:
         logger.error(f"Example analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error in example analysis: {str(e)}")
+
+
+# -----------------------------
+# AgentDB Memory Endpoints
+# -----------------------------
+
+_agentdb_instance: Optional[AgentDB] = None
+
+def get_agentdb() -> AgentDB:
+    """Get or create the global AgentDB instance."""
+    global _agentdb_instance
+    if _agentdb_instance is None:
+        _agentdb_instance = AgentDB(AgentDBConfig(
+            path="hivemind_memory.sqlite",
+            namespace="hivemind_global",
+        ))
+        _agentdb_instance.initialize()
+    return _agentdb_instance
+
+
+@router.get("/memory/stats")
+async def get_memory_stats():
+    """
+    Get AgentDB cognitive memory statistics across all subsystems.
+    """
+    try:
+        db = get_agentdb()
+        return {
+            "success": True,
+            "stats": db.get_stats(),
+        }
+    except Exception as e:
+        logger.error(f"Error getting memory stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/episodes")
+async def get_episodes(
+    namespace: str = Query("hivemind_global", description="Agent namespace"),
+    limit: int = Query(50, ge=1, le=500),
+    success_only: bool = Query(False),
+):
+    """
+    Get episodic memory entries.
+    """
+    try:
+        db = get_agentdb()
+        episodes = db.storage.get_episodes(
+            namespace=namespace, limit=limit, success_only=success_only,
+        )
+        return {"success": True, "count": len(episodes), "episodes": episodes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/skills")
+async def get_skills(
+    namespace: str = Query("hivemind_global"),
+    limit: int = Query(50, ge=1, le=500),
+):
+    """
+    Get learned skills from the skill library.
+    """
+    try:
+        db = get_agentdb()
+        skills = db.storage.get_skills(namespace=namespace, limit=limit)
+        return {"success": True, "count": len(skills), "skills": skills}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/causal")
+async def get_causal_edges(
+    namespace: str = Query("hivemind_global"),
+    cause: Optional[str] = Query(None),
+    effect: Optional[str] = Query(None),
+):
+    """
+    Get causal relationships tracked by the system.
+    """
+    try:
+        db = get_agentdb()
+        edges = db.storage.get_causal_edges(
+            cause=cause, effect=effect, namespace=namespace,
+        )
+        return {"success": True, "count": len(edges), "edges": edges}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/patterns")
+async def get_reasoning_patterns(
+    namespace: str = Query("hivemind_global"),
+    task_type: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+):
+    """
+    Get reasoning patterns from the reasoning bank.
+    """
+    try:
+        db = get_agentdb()
+        patterns = db.storage.get_patterns(
+            task_type=task_type, namespace=namespace, limit=limit,
+        )
+        return {"success": True, "count": len(patterns), "patterns": patterns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/events")
+async def get_agent_events(
+    namespace: str = Query("hivemind_global"),
+    agent_name: Optional[str] = Query(None),
+    event_type: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+):
+    """
+    Get agent events log.
+    """
+    try:
+        db = get_agentdb()
+        events = db.storage.get_events(
+            agent_name=agent_name, event_type=event_type,
+            namespace=namespace, limit=limit,
+        )
+        return {"success": True, "count": len(events), "events": events}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/memory/search/episodes")
+async def search_episodes(
+    query: str = Query(..., description="Search query for episode retrieval"),
+    namespace: str = Query("hivemind_global"),
+    k: int = Query(5, ge=1, le=50),
+    success_only: bool = Query(False),
+):
+    """
+    Semantic search across episodic memory using vector similarity.
+    """
+    try:
+        db = get_agentdb()
+        namespaced = db.create_namespaced(namespace) if namespace != db.get_namespace() else db
+        result = namespaced.reflexion.retrieve_relevant(
+            query=query, k=k, success_only=success_only,
+        )
+        return {
+            "success": True,
+            "episodes": [
+                {
+                    "id": ep.id,
+                    "task": ep.task,
+                    "output": ep.output[:500],
+                    "critique": ep.critique,
+                    "success": ep.success,
+                    "reward": ep.reward,
+                }
+                for ep in result.episodes
+            ],
+            "insights": result.insights,
+            "avg_reward": result.avg_reward,
+            "success_rate": result.success_rate,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/memory/search/skills")
+async def search_skills_endpoint(
+    query: str = Query(..., description="Search query for skill retrieval"),
+    namespace: str = Query("hivemind_global"),
+    k: int = Query(5, ge=1, le=50),
+    min_success_rate: float = Query(0.0, ge=0.0, le=1.0),
+):
+    """
+    Semantic search across the skill library.
+    """
+    try:
+        db = get_agentdb()
+        namespaced = db.create_namespaced(namespace) if namespace != db.get_namespace() else db
+        skills = namespaced.skills.search_skills(
+            query=query, k=k, min_success_rate=min_success_rate,
+        )
+        return {
+            "success": True,
+            "skills": [
+                {
+                    "id": sk.id,
+                    "name": sk.name,
+                    "description": sk.description,
+                    "success_rate": sk.success_rate,
+                    "usage_count": sk.usage_count,
+                }
+                for sk in skills
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -----------------------------

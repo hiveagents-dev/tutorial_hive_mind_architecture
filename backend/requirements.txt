@@ -13,6 +13,11 @@ sqlalchemy>=2.0.23
 psycopg2-binary>=2.9.9
 alembic>=1.13.1
 
+# AgentDB - Cognitive Memory System
+numpy>=1.24.0
+# Optional: sentence-transformers for high-quality embeddings (uses hash fallback if not installed)
+# sentence-transformers>=2.2.0
+
 # Additional utilities
 typing-extensions>=4.15.0
 requests>=2.32.5

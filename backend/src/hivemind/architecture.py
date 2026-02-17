@@ -22,6 +22,9 @@ from .consensus import ConsensusManager, ConsensusStrategy
 from .methodology import AgileMethodology, MethodologyFactory
 from .hierarchical_flow import HierarchicalExecutionFlow
 
+# AgentDB cognitive memory integration
+from agentdb import AgentDB, AgentDBConfig, HiveMindMemoryManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,7 +86,9 @@ class HiveMindArchitecture:
         self,
         gemini_client: GeminiClient,
         methodology: AgileMethodology = AgileMethodology.SCRUM,
-        consensus_strategy: ConsensusStrategy = ConsensusStrategy.WEIGHTED_VOTING
+        consensus_strategy: ConsensusStrategy = ConsensusStrategy.WEIGHTED_VOTING,
+        agentdb_path: str = "hivemind_memory.sqlite",
+        enable_memory: bool = True,
     ):
         """
         Initialize HiveMind architecture.
@@ -92,11 +97,14 @@ class HiveMindArchitecture:
             gemini_client: Initialized Gemini client for all agents.
             methodology: Agile methodology to follow (Scrum, SAFe, Kanban).
             consensus_strategy: Strategy for achieving consensus.
+            agentdb_path: Path for AgentDB SQLite database.
+            enable_memory: Whether to enable AgentDB cognitive memory.
         """
         self.gemini_client = gemini_client
         self.methodology = methodology
         self.methodology_context = MethodologyFactory.get_context(methodology)
         self.consensus_strategy = consensus_strategy
+        self.enable_memory = enable_memory
 
         # Initialize communication bus
         self.comm_bus = CommunicationBus()
@@ -123,7 +131,37 @@ class HiveMindArchitecture:
         # Initialize Level 3: Supervisor Agent
         self.supervisor = SupervisorAgent(gemini_client, methodology)
 
-        logger.info(f"HiveMind initialized with {methodology.value} methodology")
+        # Initialize AgentDB cognitive memory system
+        self.agentdb: Optional[AgentDB] = None
+        self.memory_manager: Optional[HiveMindMemoryManager] = None
+        if enable_memory:
+            self._init_agentdb(agentdb_path)
+
+        logger.info(f"HiveMind initialized with {methodology.value} methodology (memory={'enabled' if enable_memory else 'disabled'})")
+
+    def _init_agentdb(self, db_path: str) -> None:
+        """Initialize AgentDB cognitive memory system."""
+        try:
+            self.agentdb = AgentDB(AgentDBConfig(
+                path=db_path,
+                namespace="hivemind_global",
+                embedding_provider="auto",
+            ))
+            self.agentdb.initialize()
+
+            self.memory_manager = HiveMindMemoryManager(self.agentdb)
+
+            # Wrap worker agents with memory capabilities
+            self.memory_workers = self.memory_manager.wrap_agents(self.worker_agents)
+            self.memory_coordinator = self.memory_manager.wrap_agent(self.coordinator)
+            self.memory_supervisor = self.memory_manager.wrap_agent(self.supervisor)
+
+            logger.info(f"AgentDB initialized at {db_path} with {len(self.memory_workers)} memory-enabled agents")
+        except Exception as e:
+            logger.warning(f"AgentDB initialization failed (running without memory): {e}")
+            self.enable_memory = False
+            self.agentdb = None
+            self.memory_manager = None
 
     def execute(
         self,
@@ -181,6 +219,35 @@ class HiveMindArchitecture:
                 verbose
             )
 
+            # AgentDB: Track cross-agent causal flow
+            if self.enable_memory and self.memory_manager:
+                try:
+                    if verbose:
+                        print("\n[PHASE 4: Memory Consolidation (AgentDB)]")
+
+                    self.memory_manager.track_worker_to_coordinator_flow(
+                        result.worker_responses, result.coordinator_response
+                    )
+                    self.memory_manager.track_coordinator_to_supervisor_flow(
+                        result.coordinator_response, result.supervisor_response
+                    )
+                    self.memory_manager.provide_feedback_to_workers(
+                        result.supervisor_response
+                    )
+
+                    if verbose:
+                        print("  -> Causal flow tracked")
+                        print("  -> Supervisor feedback propagated to workers")
+                        memory_stats = self.memory_manager.get_system_stats()
+                        global_stats = memory_stats.get("global", {}).get("storage", {})
+                        print(f"  -> Episodes: {global_stats.get('episodes', 0)} | "
+                              f"Skills: {global_stats.get('skills', 0)} | "
+                              f"Causal edges: {global_stats.get('causal_edges', 0)} | "
+                              f"Patterns: {global_stats.get('reasoning_patterns', 0)}")
+
+                except Exception as e:
+                    logger.warning(f"AgentDB memory consolidation error: {e}")
+
             # Finalize
             end_time = time.time()
             result.execution_time = end_time - start_time
@@ -191,16 +258,26 @@ class HiveMindArchitecture:
                 "total_agents": len(self.worker_agents) + 2,  # +coordinator +supervisor
                 "worker_count": len(self.worker_agents),
                 "consensus_strategy": self.consensus_strategy.value,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "memory_enabled": self.enable_memory,
             }
+
+            # Add memory stats to metadata
+            if self.enable_memory and self.memory_manager:
+                try:
+                    result.metadata["agentdb_stats"] = self.memory_manager.get_system_stats()
+                except Exception:
+                    pass
 
             if verbose:
                 print("\n" + "=" * 80)
-                print("✅ HIVEMIND EXECUTION COMPLETED")
+                print("HIVEMIND EXECUTION COMPLETED")
                 print("=" * 80)
-                print(f"⏱  Execution Time: {result.execution_time:.2f}s")
-                print(f"📊 Consensus Level: {result.consensus_result.consensus_level:.1%}")
-                print(f"🎯 Final Confidence: {result.supervisor_response.confidence:.1%}")
+                print(f"Execution Time: {result.execution_time:.2f}s")
+                print(f"Consensus Level: {result.consensus_result.consensus_level:.1%}")
+                print(f"Final Confidence: {result.supervisor_response.confidence:.1%}")
+                if self.enable_memory:
+                    print(f"Memory: AgentDB enabled (cognitive memory active)")
 
             logger.info(f"HiveMind execution completed in {result.execution_time:.2f}s")
 
